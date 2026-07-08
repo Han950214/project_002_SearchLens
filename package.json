@@ -1,0 +1,24 @@
+{
+  "name": "searchlens-cn",
+  "version": "0.1.0",
+  "description": "在百度搜索页优先提示官网、官方下载和可信来源。",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "test": "esbuild tests/m2.3-verify.ts --bundle --packages=external --platform=node --format=esm --outfile=build/tests/m2.3-verify.mjs && node build/tests/m2.3-verify.mjs",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.32",
+    "esbuild": "^0.25.12",
+    "linkedom": "^0.18.12",
+    "typescript": "^5.9.3",
+    "wxt": "^0.19.29"
+  }
+}
