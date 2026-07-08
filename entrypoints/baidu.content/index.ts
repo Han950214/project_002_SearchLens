@@ -88,6 +88,9 @@ export default defineContentScript({
       if (r.isAdOrPromoted) return "推广";
       if (r.detectedType === "baidu_baike") return "百度百科";
       if (r.detectedType === "baidu_zhidao") return "百度知道";
+      if (r.detectedType === "baidu_tieba") return "百度贴吧";
+      if (r.detectedType === "baidu_wenku") return "百度文库";
+      if (r.detectedType === "baijiahao") return "百家号";
       if (r.detectedType === "third_party_download_site") return "第三方下载站";
       if (r.detectedType === "github_repo") return "GitHub";
       return "未分类";

@@ -5,3 +5,6 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+.chrome-test-profile/
+.chrome-test-profile2/
+.chrome-test-profile*/
