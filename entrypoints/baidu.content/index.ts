@@ -316,23 +316,38 @@ export default defineContentScript({
     // content_left observer — debounced re-extraction on DOM change
     // -----------------------------------------------------------------------
 
-    const contentLeftEl = document.getElementById("content_left");
-    if (contentLeftEl) {
-      const contentObserver = new MutationObserver(() => {
-        if (panel && !document.contains(panel)) {
-          console.log("[SearchLens] Panel detached from DOM — re-running.");
-          panel = null;
-          runAndRefresh();
-          return;
-        }
+    let observedContentLeft: HTMLElement | null = null;
+    let contentObserver: MutationObserver | null = null;
 
-        if (domSettleTimer) clearTimeout(domSettleTimer);
-        domSettleTimer = window.setTimeout(() => {
-          domSettleTimer = undefined;
-          runAndRefresh();
-        }, 600);
-      });
-      contentObserver.observe(contentLeftEl, { childList: true, subtree: false });
+    function scheduleRefresh(): void {
+      if (domSettleTimer) clearTimeout(domSettleTimer);
+      domSettleTimer = window.setTimeout(() => {
+        domSettleTimer = undefined;
+        runAndRefresh();
+      }, 600);
     }
+
+    function observeContentLeft(): void {
+      const currentContentLeft = document.getElementById("content_left");
+      if (currentContentLeft === observedContentLeft) return;
+
+      contentObserver?.disconnect();
+      observedContentLeft = currentContentLeft;
+      if (panel && !document.contains(panel)) panel = null;
+
+      if (!currentContentLeft) return;
+      contentObserver = new MutationObserver(() => {
+        if (panel && !document.contains(panel)) panel = null;
+        scheduleRefresh();
+      });
+      contentObserver.observe(currentContentLeft, { childList: true, subtree: false });
+      scheduleRefresh();
+    }
+
+    observeContentLeft();
+    new MutationObserver(observeContentLeft).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
   },
 });
