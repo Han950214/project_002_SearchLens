@@ -22,9 +22,63 @@
             <span class="option-desc">在百度搜索页显示推荐区</span>
           </label>
           <label class="toggle-switch">
-            <input type="checkbox" id="enabled-toggle" checked />
+            <input type="checkbox" id="enabled-toggle" />
             <span class="toggle-slider"></span>
           </label>
+        </div>
+        <div class="option-row">
+          <label class="option-label" for="rec-limit-select">
+            <span class="option-title">推荐结果数量</span>
+            <span class="option-desc">面板中每次显示的建议条数</span>
+          </label>
+          <select id="rec-limit-select" class="options-select">
+            <option value="3">3 条</option>
+            <option value="5" selected>5 条</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Scoring & Display -->
+      <section class="options-section">
+        <h2>评分与显示</h2>
+        <div class="option-row">
+          <label class="option-label" for="show-confidence-toggle">
+            <span class="option-title">显示可信度标签</span>
+            <span class="option-desc">在每个推荐项旁显示高/中/低可信标签</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="show-confidence-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="option-row">
+          <label class="option-label" for="show-reasons-toggle">
+            <span class="option-title">显示评分理由</span>
+            <span class="option-desc">显示每条推荐的主要原因</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="show-reasons-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="option-row">
+          <label class="option-label" for="warn-download-toggle">
+            <span class="option-title">第三方下载站警告</span>
+            <span class="option-desc">对第三方下载网站显示风险提示</span>
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="warn-download-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Domain Preferences -->
+      <section class="options-section" id="domain-prefs-section">
+        <h2>域名偏好管理</h2>
+        <p class="section-desc">管理你对各来源域名的偏好设置。提升的域名在评分中会获得加分。</p>
+        <div id="domain-prefs-list" class="domain-prefs-list">
+          <p class="empty-hint">暂无自定义偏好。</p>
         </div>
       </section>
 

@@ -10,6 +10,8 @@
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "test": "esbuild tests/m2.3-verify.ts --bundle --packages=external --platform=node --format=esm --outfile=build/tests/m2.3-verify.mjs && node build/tests/m2.3-verify.mjs",
+    "test:m3": "esbuild tests/m3.1-scoring.test.ts --bundle --packages=external --platform=node --format=esm --outfile=build/tests/m3.1-scoring.test.mjs && node build/tests/m3.1-scoring.test.mjs",
+    "test:all": "npm test && npm run test:m3",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "lint": "tsc --noEmit"

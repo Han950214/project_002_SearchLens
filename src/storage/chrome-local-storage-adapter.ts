@@ -5,11 +5,21 @@
  * Provides initialization, error handling, and migration stubs for future versions.
  */
 
+import { normalizeDomain } from '../utils/domain';
+
 // ── Types ──
 
 export interface SearchLensSettings {
   /** Whether SearchLens is enabled. Default: true */
   enabled: boolean;
+  /** Number of recommendations to show in panel. Default: 5 */
+  recommendationLimit: number;
+  /** Warn about third-party download sites. Default: true */
+  warnThirdPartyDownloadSites: boolean;
+  /** Show confidence labels in panel. Default: true */
+  showConfidence: boolean;
+  /** Show scoring reasons in panel. Default: true */
+  showReasons: boolean;
   /** Schema version for future migrations */
   schemaVersion: number;
   /** Timestamp of last settings update (ISO 8601) */
@@ -40,6 +50,10 @@ const CURRENT_SCHEMA_VERSION = 1;
 
 const DEFAULT_SETTINGS: SearchLensSettings = {
   enabled: true,
+  recommendationLimit: 5,
+  warnThirdPartyDownloadSites: true,
+  showConfidence: true,
+  showReasons: true,
   schemaVersion: CURRENT_SCHEMA_VERSION,
   updatedAt: new Date().toISOString(),
 };
@@ -127,7 +141,9 @@ export const storageAdapter = {
   async setDomainPreference(domain: string, action: DomainPreference['action']): Promise<void> {
     try {
       const prefs = await this.getDomainPreferences();
-      prefs[domain] = action;
+      const normalizedDomain = normalizeDomain(domain);
+      if (!normalizedDomain) throw new Error('A valid domain is required.');
+      prefs[normalizedDomain] = action;
       await chrome.storage.local.set({
         [STORAGE_KEYS.DOMAIN_PREFERENCES]: prefs,
       });
@@ -143,7 +159,7 @@ export const storageAdapter = {
   async removeDomainPreference(domain: string): Promise<void> {
     try {
       const prefs = await this.getDomainPreferences();
-      delete prefs[domain];
+      delete prefs[normalizeDomain(domain)];
       await chrome.storage.local.set({
         [STORAGE_KEYS.DOMAIN_PREFERENCES]: prefs,
       });
@@ -165,6 +181,10 @@ async function migrateSettings(fromVersion: number): Promise<void> {
     const settings = (raw[STORAGE_KEYS.SETTINGS] as Partial<SearchLensSettings>) ?? {};
     const migrated: SearchLensSettings = {
       enabled: settings.enabled ?? true,
+      recommendationLimit: 5,
+      warnThirdPartyDownloadSites: true,
+      showConfidence: true,
+      showReasons: true,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       updatedAt: new Date().toISOString(),
     };

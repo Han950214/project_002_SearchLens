@@ -20,6 +20,10 @@ export default defineBackground(() => {
         const p = msg.payload as { domain: string; action: 'promote' | 'demote' | 'hide' };
         return storageAdapter.setDomainPreference(p.domain, p.action);
       }
+      case 'REMOVE_DOMAIN_PREFERENCE': {
+        const r = msg.payload as { domain: string };
+        return storageAdapter.removeDomainPreference(r.domain);
+      }
       case 'OPEN_OPTIONS':
         try {
           browser.runtime.openOptionsPage();

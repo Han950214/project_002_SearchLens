@@ -90,3 +90,208 @@
   background: #f0f0f0;
   border-color: #bbb;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   M3 — Scored item layout
+   ═══════════════════════════════════════════════════════════════ */
+
+.searchlens-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.searchlens-item:last-child {
+  border-bottom: none;
+}
+
+/* Score bar column */
+.searchlens-item-score {
+  flex: 0 0 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.searchlens-score-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #eee;
+  position: relative;
+  overflow: hidden;
+}
+
+.searchlens-score-bar::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.searchlens-score-bar.score-high::after    { background: #34a853; width: 100%; }
+.searchlens-score-bar.score-medium::after  { background: #fbbc04; width: 100%; }
+.searchlens-score-bar.score-low::after     { background: #ea8600; width: 100%; }
+.searchlens-score-bar.score-very-low::after { background: #ea4335; width: 100%; }
+
+.searchlens-score-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #666;
+  line-height: 1;
+}
+
+/* Content column */
+.searchlens-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.searchlens-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a0dab;
+  line-height: 1.4;
+  margin-bottom: 2px;
+  word-break: break-all;
+}
+
+.searchlens-item-domain {
+  font-size: 12px;
+  color: #006621;
+  margin-bottom: 4px;
+}
+
+.searchlens-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Badges */
+.searchlens-type-badge,
+.searchlens-conf-badge,
+.searchlens-ad-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.searchlens-type-badge {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.searchlens-ad-badge {
+  background: #fce8e6;
+  color: #d93025;
+}
+
+.searchlens-download-warning {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #fce8e6;
+  color: #b31412;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Confidence badge colors */
+.searchlens-conf-badge.conf-high {
+  background: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.searchlens-conf-badge.conf-medium {
+  background: #fef7e0;
+  color: #e37400;
+}
+
+.searchlens-conf-badge.conf-low {
+  background: #fce8e6;
+  color: #d93025;
+}
+
+.searchlens-conf-badge.conf-unknown {
+  background: #f1f3f4;
+  color: #80868b;
+}
+
+/* Reason text */
+.searchlens-reason {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #f1f8e9;
+  color: #33691e;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: help;
+  border-bottom: 1px dashed #aed581;
+}
+
+/* Action buttons */
+.searchlens-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.searchlens-btn-sm {
+  padding: 2px 8px;
+  border: 1px solid #dadce0;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 11px;
+  color: #5f6368;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.searchlens-btn-sm:hover {
+  background: #f1f3f4;
+  border-color: #bdc1c6;
+}
+
+.searchlens-btn-sm:active {
+  background: #e8eaed;
+}
+
+/* Empty state */
+.searchlens-empty {
+  text-align: center;
+  padding: 20px 0;
+  color: #666;
+}
+
+.searchlens-empty p {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+/* Footer */
+.searchlens-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 4px;
+}
+
+.searchlens-count {
+  font-size: 11px;
+  color: #999;
+}
