@@ -10,6 +10,9 @@
  *  6. User "promote" preference boosts the score
  *  7. getRecommendations sorts by score
  *  8. getRecommendations respects limit
+ *  9. Third-party download sites receive a warning and penalty
+ * 10. User "demote" preference lowers the score
+ * 11. Preference ordering filters hide and ranks promote above demote
  */
 
 import assert from 'node:assert/strict';
@@ -174,7 +177,70 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   assert.equal(recs.top.length, 2, 'top should have 2 items');
   assert.equal(recs.all.length, 4, 'all should have 4 items');
 
-  console.log('  Test 8 OK — limit respected: top 2 of 4');
+console.log('  Test 8 OK — limit respected: top 2 of 4');
+}
+
+// ─── Test 9: Third-party download site penalty ──────────────────────────
+
+{
+  const downloadSite = makeResult({
+    title: '微信高速下载',
+    domain: 'downcc.com',
+    displayUrl: 'downcc.com',
+    detectedType: 'third_party_download_site',
+  });
+  const scored = scoreResult(downloadSite, {
+    query: '微信下载',
+    intent: 'download',
+    userPreferences: {},
+  });
+
+  assert.ok(scored.reasons.some(r => r.code === 'third_party_download'), 'third-party warning reason is present');
+  assert.ok(scored.score < 60, `third-party download site should not be high confidence, got ${scored.score}`);
+
+  console.log(`  Test 9 OK — third-party download score: ${scored.score}`);
+}
+
+// ─── Test 10: User "demote" preference lowers score ────────────────────
+
+{
+  const result = makeResult({ domain: 'neutral.example.com', displayUrl: 'neutral.example.com' });
+  const neutral = scoreResult(result, { query: 'test', intent: 'general', userPreferences: {} });
+  const demoted = scoreResult(result, {
+    query: 'test',
+    intent: 'general',
+    userPreferences: { 'neutral.example.com': 'demote' },
+  });
+
+  assert.ok(demoted.score < neutral.score, `demoted score ${demoted.score} < neutral score ${neutral.score}`);
+  assert.ok(demoted.reasons.some(r => r.code === 'user_demoted'), 'reason includes user_demoted');
+
+  console.log(`  Test 10 OK — neutral: ${neutral.score}, demoted: ${demoted.score}`);
+}
+
+// ─── Test 11: Preference priority in recommendations ────────────────────
+
+{
+  const results = [
+    makeResult({ id: 'promote', title: 'Promoted source', domain: 'promote.example.com', originalRank: 3 }),
+    makeResult({ id: 'demote', title: 'Demoted source', domain: 'demote.example.com', originalRank: 1 }),
+    makeResult({ id: 'hide', title: 'Hidden source', domain: 'hide.example.com', originalRank: 2 }),
+  ];
+  const recs = getRecommendations({
+    query: 'test',
+    results,
+    domainPreferences: {
+      'promote.example.com': 'promote',
+      'demote.example.com': 'demote',
+      'hide.example.com': 'hide',
+    },
+  });
+
+  assert.equal(recs.all.some(result => result.domain === 'hide.example.com'), false, 'hide excludes the result');
+  assert.equal(recs.all[0].domain, 'promote.example.com', 'promote ranks above demote for equivalent sources');
+  assert.equal(recs.hasHiddenResults, true, 'hidden result is reported');
+
+  console.log('  Test 11 OK — hide excluded; promote ranked above demote');
 }
 
 // ──────────────────────────────────────────────────────────────────────────

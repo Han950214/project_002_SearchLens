@@ -92,7 +92,15 @@ console.log('\n=== Test 2: Exclude SearchLens panel node ===');
 const panel = doc.createElement('div');
 panel.id = 'searchlens-panel';
 panel.className = 'searchlens-panel';
-panel.innerHTML = '<div>SearchLens injected content</div>';
+panel.setAttribute('data-searchlens-root', 'true');
+panel.innerHTML = '<div class="c-container"><h3><a href="https://searchlens.invalid/">SearchLens injected content</a></h3></div>';
+const injectedContainer = panel.querySelector('.c-container') as any;
+if (injectedContainer) {
+  injectedContainer.getBoundingClientRect = () => ({
+    x: 0, y: 0, bottom: 100, height: 100, left: 0, right: 800, top: 0, width: 800,
+    toJSON() { return this; },
+  });
+}
 contentLeft?.insertBefore(panel, contentLeft.firstChild);
 
 const resultsAfterPanel = extractResults(doc);

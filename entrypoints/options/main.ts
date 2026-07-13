@@ -1,31 +1,24 @@
-/**
- * SearchLens CN — Options Page Script
- *
- * M3 expanded: supports recommendationLimit, showConfidence, showReasons,
- * warnThirdPartyDownloadSites, and domain preference management.
- */
-
 import type { SearchLensSettings } from '../../src/storage/chrome-local-storage-adapter';
 import type { DomainPrefMap } from '../../src/scoring/recommendation-engine';
 
-// ── DOM elements ──
 const enabledToggle = document.getElementById('enabled-toggle') as HTMLInputElement | null;
 const recLimitSelect = document.getElementById('rec-limit-select') as HTMLSelectElement | null;
 const showConfidenceToggle = document.getElementById('show-confidence-toggle') as HTMLInputElement | null;
 const showReasonsToggle = document.getElementById('show-reasons-toggle') as HTMLInputElement | null;
 const warnDownloadToggle = document.getElementById('warn-download-toggle') as HTMLInputElement | null;
 const domainPrefsList = document.getElementById('domain-prefs-list');
+const domainPrefCount = document.getElementById('domain-pref-count');
+const clearDomainPrefsBtn = document.getElementById('clear-domain-prefs-btn') as HTMLButtonElement | null;
 const exportBtn = document.getElementById('export-btn');
 const importBtn = document.getElementById('import-btn');
 const resetBtn = document.getElementById('reset-btn');
 const dataStatus = document.getElementById('data-status');
 
-// ── Load current settings ──
+let statusTimer: number | undefined;
+
 async function loadSettings(): Promise<void> {
   try {
-    const settings: SearchLensSettings = await browser.runtime.sendMessage({
-      type: 'GET_SETTINGS',
-    });
+    const settings = await browser.runtime.sendMessage({ type: 'GET_SETTINGS' }) as SearchLensSettings;
     if (enabledToggle) enabledToggle.checked = settings?.enabled !== false;
     if (recLimitSelect) recLimitSelect.value = String(settings?.recommendationLimit ?? 5);
     if (showConfidenceToggle) showConfidenceToggle.checked = settings?.showConfidence !== false;
@@ -33,196 +26,187 @@ async function loadSettings(): Promise<void> {
     if (warnDownloadToggle) warnDownloadToggle.checked = settings?.warnThirdPartyDownloadSites !== false;
   } catch (err) {
     console.error('[SearchLens] Failed to load settings:', err);
-    showStatus('无法加载设置', 'error');
+    showStatus('无法读取本地设置。', 'error');
   }
 }
 
-// ── Load and render domain preferences ──
-async function loadDomainPrefs(): Promise<void> {
+async function loadDomainPreferences(): Promise<void> {
   try {
-    const prefs: DomainPrefMap = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_PREFERENCES' });
-    renderDomainPrefs(prefs);
+    const prefs = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_PREFERENCES' }) as DomainPrefMap;
+    renderDomainPreferences(prefs ?? {});
   } catch (err) {
-    console.error('[SearchLens] Failed to load domain prefs:', err);
+    console.error('[SearchLens] Failed to load domain preferences:', err);
+    if (domainPrefsList) domainPrefsList.innerHTML = '<p class="empty-hint is-error">域名偏好读取失败。</p>';
+    showStatus('无法读取域名偏好。', 'error');
   }
 }
 
-function renderDomainPrefs(prefs: DomainPrefMap): void {
+function renderDomainPreferences(prefs: DomainPrefMap): void {
   if (!domainPrefsList) return;
-  const entries = Object.entries(prefs);
+  const entries = Object.entries(prefs).sort(([left], [right]) => left.localeCompare(right));
+  if (domainPrefCount) domainPrefCount.textContent = String(entries.length);
+  if (clearDomainPrefsBtn) clearDomainPrefsBtn.disabled = entries.length === 0;
 
-  if (entries.length === 0) {
-    domainPrefsList.innerHTML = '<p class="empty-hint">暂无自定义偏好。</p>';
-    return;
-  }
+  const groups: Array<{
+    action: DomainPrefMap[string];
+    title: string;
+    description: string;
+  }> = [
+    { action: 'promote', title: '已提升', description: '优先提高推荐顺序' },
+    { action: 'demote', title: '已降低', description: '在同类结果中降低顺序' },
+    { action: 'hide', title: '已隐藏', description: '从推荐结果中优先排除' },
+  ];
 
-  const actionLabels: Record<string, string> = {
-    promote: '已提升',
-    demote: '已降低',
-    hide: '已隐藏',
-  };
+  domainPrefsList.innerHTML = groups.map(group => {
+    const groupEntries = entries.filter(([, action]) => action === group.action);
+    const rows = groupEntries.length > 0
+      ? groupEntries.map(([domain]) => `<div class="domain-pref-item">
+          <span class="domain-pref-domain">${escapeHtml(domain)}</span>
+          <button class="domain-pref-remove-btn" type="button" data-domain="${escapeHtml(domain)}" aria-label="移除 ${escapeHtml(domain)} 的偏好">移除</button>
+        </div>`).join('')
+      : '<p class="group-empty">暂无</p>';
 
-  const itemsHtml = entries.map(([domain, action]) => `
-    <div class="domain-pref-item" data-domain="${escapeHtml(domain)}">
-      <div>
-        <span class="domain-pref-domain">${escapeHtml(domain)}</span>
-        <span class="domain-pref-action-badge action-${action}">${escapeHtml(actionLabels[action] || action)}</span>
-      </div>
-      <button class="domain-pref-remove-btn" data-domain="${escapeHtml(domain)}">✕ 移除</button>
-    </div>
-  `).join('');
-
-  domainPrefsList.innerHTML = itemsHtml;
-
-  // Wire up remove buttons
-  domainPrefsList.querySelectorAll('.domain-pref-remove-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const domain = (btn as HTMLElement).dataset.domain;
-      if (!domain) return;
-      try {
-        await browser.runtime.sendMessage({
-          type: 'REMOVE_DOMAIN_PREFERENCE',
-          payload: { domain },
-        });
-        showStatus('已移除域名偏好', 'success');
-        await loadDomainPrefs();
-      } catch (err) {
-        console.error('[SearchLens] Failed to remove domain pref:', err);
-        showStatus('移除失败', 'error');
-      }
-    });
-  });
+    return `<section class="domain-group action-${group.action}">
+      <div class="domain-group-heading"><div><h3>${group.title}</h3><p>${group.description}</p></div><span>${groupEntries.length}</span></div>
+      <div class="domain-group-list">${rows}</div>
+    </section>`;
+  }).join('');
 }
 
-// ── Save settings ──
+async function removeDomainPreference(domain: string): Promise<void> {
+  try {
+    await browser.runtime.sendMessage({ type: 'REMOVE_DOMAIN_PREFERENCE', payload: { domain } });
+    showStatus(`已移除 ${domain} 的偏好。`, 'success');
+    await loadDomainPreferences();
+  } catch (err) {
+    console.error('[SearchLens] Failed to remove domain preference:', err);
+    showStatus('域名偏好移除失败。', 'error');
+  }
+}
+
+async function clearDomainPreferences(): Promise<void> {
+  if (!confirm('确定清空全部域名提升、降低和隐藏规则吗？')) return;
+  try {
+    await browser.runtime.sendMessage({ type: 'CLEAR_DOMAIN_PREFERENCES' });
+    showStatus('已清空全部域名偏好。', 'success');
+    await loadDomainPreferences();
+  } catch (err) {
+    console.error('[SearchLens] Failed to clear domain preferences:', err);
+    showStatus('域名偏好清空失败。', 'error');
+  }
+}
+
 async function saveSettings(key: keyof SearchLensSettings, value: unknown): Promise<void> {
   try {
-    await browser.runtime.sendMessage({
-      type: 'SET_SETTINGS',
-      payload: { [key]: value },
-    });
-    showStatus('设置已保存', 'success');
+    await browser.runtime.sendMessage({ type: 'SET_SETTINGS', payload: { [key]: value } });
+    showStatus('设置已保存。', 'success');
   } catch (err) {
     console.error('[SearchLens] Failed to save settings:', err);
-    showStatus('保存失败', 'error');
+    showStatus('设置保存失败。', 'error');
+    await loadSettings();
   }
 }
 
-// ── Export ──
 async function handleExport(): Promise<void> {
   try {
     const settings = await browser.runtime.sendMessage({ type: 'GET_SETTINGS' });
-    const prefs = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_PREFERENCES' });
+    const domainPreferences = await browser.runtime.sendMessage({ type: 'GET_DOMAIN_PREFERENCES' });
     const blob = new Blob(
-      [JSON.stringify({ settings, domainPreferences: prefs }, null, 2)],
-      { type: 'application/json' }
+      [JSON.stringify({ settings, domainPreferences }, null, 2)],
+      { type: 'application/json' },
     );
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `searchlens-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `searchlens-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
     URL.revokeObjectURL(url);
-    showStatus('设置已导出', 'success');
+    showStatus('设置已导出。', 'success');
   } catch (err) {
     console.error('[SearchLens] Export failed:', err);
-    showStatus('导出失败', 'error');
+    showStatus('设置导出失败。', 'error');
   }
 }
 
-// ── Import ──
 function handleImport(): void {
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.json';
+  input.accept = '.json,application/json';
   input.addEventListener('change', async () => {
     const file = input.files?.[0];
     if (!file) return;
+
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (data.settings) {
-        await browser.runtime.sendMessage({
-          type: 'SET_SETTINGS',
-          payload: data.settings,
-        });
+      const data = JSON.parse(await file.text()) as {
+        settings?: Partial<SearchLensSettings>;
+        domainPreferences?: Record<string, unknown>;
+      };
+      if (data.settings && typeof data.settings === 'object') {
+        await browser.runtime.sendMessage({ type: 'SET_SETTINGS', payload: data.settings });
       }
       if (data.domainPreferences && typeof data.domainPreferences === 'object') {
-        // DomainPreferencesMap is a flat {} map; iterate and set each
+        await browser.runtime.sendMessage({ type: 'CLEAR_DOMAIN_PREFERENCES' });
         for (const [domain, action] of Object.entries(data.domainPreferences)) {
-          if (typeof action === 'string') {
-            await browser.runtime.sendMessage({
-              type: 'SET_DOMAIN_PREFERENCE',
-              payload: { domain, action },
-            });
+          if (action === 'promote' || action === 'demote' || action === 'hide') {
+            await browser.runtime.sendMessage({ type: 'SET_DOMAIN_PREFERENCE', payload: { domain, action } });
           }
         }
       }
-      showStatus('设置已导入', 'success');
-      await loadSettings();
-      await loadDomainPrefs();
+      await Promise.all([loadSettings(), loadDomainPreferences()]);
+      showStatus('设置已导入。', 'success');
     } catch (err) {
       console.error('[SearchLens] Import failed:', err);
-      showStatus('导入失败：文件格式不正确', 'error');
+      showStatus('导入失败：请检查备份文件格式。', 'error');
     }
   });
   input.click();
 }
 
-// ── Reset ──
 async function handleReset(): Promise<void> {
-  if (!confirm('确定要重置所有 SearchLens 设置和偏好吗？此操作不可撤销。')) return;
+  if (!confirm('确定重置全部 SearchLens 本地设置和域名偏好吗？')) return;
   try {
     await browser.storage.local.clear();
-    showStatus('所有设置已重置', 'success');
-    await loadSettings();
-    await loadDomainPrefs();
+    await Promise.all([loadSettings(), loadDomainPreferences()]);
+    showStatus('全部本地数据已重置。', 'success');
   } catch (err) {
     console.error('[SearchLens] Reset failed:', err);
-    showStatus('重置失败', 'error');
+    showStatus('本地数据重置失败。', 'error');
   }
 }
 
-// ── Status helper ──
 function showStatus(message: string, type: 'success' | 'error'): void {
   if (!dataStatus) return;
+  if (statusTimer) clearTimeout(statusTimer);
   dataStatus.textContent = message;
   dataStatus.className = `data-status data-status-${type}`;
   dataStatus.hidden = false;
-  setTimeout(() => {
-    if (dataStatus) dataStatus.hidden = true;
-  }, 3000);
+  statusTimer = window.setTimeout(() => { dataStatus.hidden = true; }, 3200);
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// ── Event listeners ──
-enabledToggle?.addEventListener('change', () => {
-  saveSettings('enabled', enabledToggle.checked);
+domainPrefsList?.addEventListener('click', (event) => {
+  const target = event.target as Element | null;
+  const button = target?.closest<HTMLButtonElement>('.domain-pref-remove-btn');
+  const domain = button?.dataset.domain;
+  if (domain) void removeDomainPreference(domain);
 });
 
-recLimitSelect?.addEventListener('change', () => {
-  saveSettings('recommendationLimit', Number(recLimitSelect.value));
-});
-
-showConfidenceToggle?.addEventListener('change', () => {
-  saveSettings('showConfidence', showConfidenceToggle.checked);
-});
-
-showReasonsToggle?.addEventListener('change', () => {
-  saveSettings('showReasons', showReasonsToggle.checked);
-});
-
-warnDownloadToggle?.addEventListener('change', () => {
-  saveSettings('warnThirdPartyDownloadSites', warnDownloadToggle.checked);
-});
-
-exportBtn?.addEventListener('click', handleExport);
+enabledToggle?.addEventListener('change', () => { void saveSettings('enabled', enabledToggle.checked); });
+recLimitSelect?.addEventListener('change', () => { void saveSettings('recommendationLimit', Number(recLimitSelect.value)); });
+showConfidenceToggle?.addEventListener('change', () => { void saveSettings('showConfidence', showConfidenceToggle.checked); });
+showReasonsToggle?.addEventListener('change', () => { void saveSettings('showReasons', showReasonsToggle.checked); });
+warnDownloadToggle?.addEventListener('change', () => { void saveSettings('warnThirdPartyDownloadSites', warnDownloadToggle.checked); });
+clearDomainPrefsBtn?.addEventListener('click', () => { void clearDomainPreferences(); });
+exportBtn?.addEventListener('click', () => { void handleExport(); });
 importBtn?.addEventListener('click', handleImport);
-resetBtn?.addEventListener('click', handleReset);
+resetBtn?.addEventListener('click', () => { void handleReset(); });
 
-// ── Initial load ──
-loadSettings();
-loadDomainPrefs();
+void Promise.all([loadSettings(), loadDomainPreferences()]);

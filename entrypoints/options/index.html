@@ -7,119 +7,96 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <div class="options-container">
+  <div class="options-shell">
     <header class="options-header">
-      <h1>🔍 SearchLens CN 设置</h1>
+      <div class="brand-mark" aria-hidden="true">SL</div>
+      <div>
+        <p class="eyebrow">SEARCHLENS CN · v0.3</p>
+        <h1>搜索结果辅助设置</h1>
+        <p>管理推荐显示与本地域名偏好。所有设置仅保存在当前浏览器中。</p>
+      </div>
     </header>
 
     <main class="options-body">
-      <!-- Enable / Disable -->
       <section class="options-section">
-        <h2>基本设置</h2>
+        <div class="section-heading">
+          <div><p class="section-kicker">显示</p><h2>推荐面板</h2></div>
+        </div>
         <div class="option-row">
           <label class="option-label" for="enabled-toggle">
             <span class="option-title">启用 SearchLens</span>
-            <span class="option-desc">在百度搜索页显示推荐区</span>
+            <span class="option-desc">在百度网页搜索页显示独立的推荐面板</span>
           </label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="enabled-toggle" />
-            <span class="toggle-slider"></span>
-          </label>
+          <label class="toggle-switch"><input type="checkbox" id="enabled-toggle" /><span class="toggle-slider"></span></label>
         </div>
         <div class="option-row">
           <label class="option-label" for="rec-limit-select">
-            <span class="option-title">推荐结果数量</span>
-            <span class="option-desc">面板中每次显示的建议条数</span>
+            <span class="option-title">推荐数量</span>
+            <span class="option-desc">控制主面板最多显示的推荐条数</span>
           </label>
-          <select id="rec-limit-select" class="options-select">
-            <option value="3">3 条</option>
-            <option value="5" selected>5 条</option>
-          </select>
+          <select id="rec-limit-select" class="options-select"><option value="3">3 条</option><option value="5" selected>5 条</option></select>
         </div>
       </section>
 
-      <!-- Scoring & Display -->
       <section class="options-section">
-        <h2>评分与显示</h2>
+        <div class="section-heading">
+          <div><p class="section-kicker">解释</p><h2>可信度辅助信息</h2></div>
+        </div>
         <div class="option-row">
           <label class="option-label" for="show-confidence-toggle">
-            <span class="option-title">显示可信度标签</span>
-            <span class="option-desc">在每个推荐项旁显示高/中/低可信标签</span>
+            <span class="option-title">显示可信度</span>
+            <span class="option-desc">显示可信度分数和较高 / 中等 / 较低参考标签</span>
           </label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="show-confidence-toggle" checked />
-            <span class="toggle-slider"></span>
-          </label>
+          <label class="toggle-switch"><input type="checkbox" id="show-confidence-toggle" checked /><span class="toggle-slider"></span></label>
         </div>
         <div class="option-row">
           <label class="option-label" for="show-reasons-toggle">
             <span class="option-title">显示评分理由</span>
-            <span class="option-desc">显示每条推荐的主要原因</span>
+            <span class="option-desc">说明官网特征、推广、下载站和用户偏好等信号</span>
           </label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="show-reasons-toggle" checked />
-            <span class="toggle-slider"></span>
-          </label>
+          <label class="toggle-switch"><input type="checkbox" id="show-reasons-toggle" checked /><span class="toggle-slider"></span></label>
         </div>
         <div class="option-row">
           <label class="option-label" for="warn-download-toggle">
-            <span class="option-title">第三方下载站警告</span>
-            <span class="option-desc">对第三方下载网站显示风险提示</span>
+            <span class="option-title">提示第三方下载站</span>
+            <span class="option-desc">提醒核对软件官网或官方应用商店，不承诺绝对安全</span>
           </label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="warn-download-toggle" checked />
-            <span class="toggle-slider"></span>
-          </label>
+          <label class="toggle-switch"><input type="checkbox" id="warn-download-toggle" checked /><span class="toggle-slider"></span></label>
         </div>
       </section>
 
-      <!-- Domain Preferences -->
-      <section class="options-section" id="domain-prefs-section">
-        <h2>域名偏好管理</h2>
-        <p class="section-desc">管理你对各来源域名的偏好设置。提升的域名在评分中会获得加分。</p>
-        <div id="domain-prefs-list" class="domain-prefs-list">
-          <p class="empty-hint">暂无自定义偏好。</p>
-        </div>
-      </section>
-
-      <!-- Privacy -->
       <section class="options-section">
-        <h2>隐私说明</h2>
-        <div class="privacy-info">
-          <p>SearchLens CN 是本地优先的浏览器扩展：</p>
-          <ul>
-            <li>✅ 不上传搜索词</li>
-            <li>✅ 不上传搜索结果</li>
-            <li>✅ 不上传用户偏好</li>
-            <li>✅ 不记录完整浏览历史</li>
-            <li>✅ 不接远程 AI</li>
-            <li>✅ 所有偏好只保存在您的本地浏览器中</li>
-          </ul>
+        <div class="section-heading section-heading-actions">
+          <div>
+            <p class="section-kicker">本地规则</p>
+            <h2>域名偏好</h2>
+            <p class="section-desc"><span id="domain-pref-count">0</span> 个域名规则。隐藏优先排除，提升和降低会影响推荐顺序。</p>
+          </div>
+          <button id="clear-domain-prefs-btn" class="options-btn options-btn-danger" type="button">清空域名偏好</button>
+        </div>
+        <div id="domain-prefs-list" class="domain-groups" aria-live="polite">
+          <p class="empty-hint">正在读取本地域名偏好…</p>
         </div>
       </section>
 
-      <!-- Data Management -->
-      <section class="options-section">
-        <h2>数据管理</h2>
-        <div class="option-row">
-          <button id="export-btn" class="options-btn">📤 导出设置</button>
-          <button id="import-btn" class="options-btn">📥 导入设置</button>
-          <button id="reset-btn" class="options-btn options-btn-danger">🔄 重置所有设置</button>
-        </div>
-        <div id="data-status" class="data-status" hidden></div>
+      <section class="options-section privacy-section">
+        <div class="section-heading"><div><p class="section-kicker">隐私</p><h2>默认本地处理</h2></div></div>
+        <p>SearchLens 不收集或上传搜索词、搜索结果、点击记录、完整浏览历史或域名偏好，也不提供账号、云同步和统计上传。</p>
+        <p>可信度仅用于辅助判断，请继续核对原始搜索结果与真实网站域名。</p>
       </section>
 
-      <!-- About -->
       <section class="options-section">
-        <h2>关于</h2>
-        <p class="about-text">
-          SearchLens CN v0.1<br />
-          帮助您在百度搜索中快速识别官网、官方下载和可信来源。
-        </p>
+        <div class="section-heading"><div><p class="section-kicker">维护</p><h2>本地数据</h2></div></div>
+        <div class="data-actions">
+          <button id="export-btn" class="options-btn" type="button">导出设置</button>
+          <button id="import-btn" class="options-btn" type="button">导入设置</button>
+          <button id="reset-btn" class="options-btn options-btn-danger" type="button">重置全部本地数据</button>
+        </div>
       </section>
     </main>
   </div>
 
+  <div id="data-status" class="data-status" role="status" aria-live="polite" hidden></div>
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

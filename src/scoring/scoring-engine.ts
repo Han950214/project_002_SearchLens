@@ -192,7 +192,7 @@ function officialSignalScore(result: SearchResult, intent: QueryIntent): SignalR
         weight: DEFAULT_WEIGHTS.officialSignal,
         reason: {
           code: 'official_domain_match',
-          label: `匹配 ${label} 官方域名`,
+          label: `官方域名特征：匹配 ${label}`,
           weight: DEFAULT_WEIGHTS.officialSignal,
           confidence: 'high',
         },
@@ -205,7 +205,7 @@ function officialSignalScore(result: SearchResult, intent: QueryIntent): SignalR
       weight: DEFAULT_WEIGHTS.officialSignal * 0.6,
       reason: {
         code: 'official_domain_partial',
-        label: `来自 ${label} 官方域名`,
+        label: `官方域名特征：来自 ${label}`,
         weight: DEFAULT_WEIGHTS.officialSignal,
         confidence: 'medium',
       },
@@ -246,7 +246,7 @@ function sourceTrustScore(result: SearchResult): SignalResult {
       weight: DEFAULT_WEIGHTS.sourceTrust,
       reason: {
         code: 'high_trust_domain',
-        label: `高可信来源`,
+        label: `可信来源特征`,
         weight: DEFAULT_WEIGHTS.sourceTrust,
         confidence: 'high',
       },
@@ -279,21 +279,21 @@ function userPreferenceScore(
     return {
       score: 100,
       weight: DEFAULT_WEIGHTS.userPreference,
-      reason: { code: 'user_promoted', label: `你已提升此来源`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
+      reason: { code: 'user_promoted', label: `用户已提升`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
     };
   }
   if (action === 'demote') {
     return {
       score: 10,
       weight: DEFAULT_WEIGHTS.userPreference,
-      reason: { code: 'user_demoted', label: `你已降低此来源`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
+      reason: { code: 'user_demoted', label: `用户已降低`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
     };
   }
   if (action === 'hide') {
     return {
       score: 0,
       weight: DEFAULT_WEIGHTS.userPreference,
-      reason: { code: 'user_hidden', label: `你已隐藏此来源`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
+      reason: { code: 'user_hidden', label: `用户已隐藏`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
     };
   }
 
@@ -324,7 +324,7 @@ function adRiskScore(result: SearchResult): SignalResult {
     return {
       score: 0,
       weight: DEFAULT_WEIGHTS.adRisk,
-      reason: { code: 'ad_or_promoted', label: '推广/广告结果', weight: DEFAULT_WEIGHTS.adRisk, confidence: 'high' },
+      reason: { code: 'ad_or_promoted', label: '推广结果', weight: DEFAULT_WEIGHTS.adRisk, confidence: 'high' },
     };
   }
   return { score: 100, weight: DEFAULT_WEIGHTS.adRisk };
@@ -335,7 +335,7 @@ function thirdPartyDownloadRiskScore(result: SearchResult): SignalResult {
     return {
       score: 0,
       weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk,
-      reason: { code: 'third_party_download', label: '第三方下载站', weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk, confidence: 'high' },
+      reason: { code: 'third_party_download', label: '第三方下载站谨慎', weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk, confidence: 'high' },
     };
   }
   return { score: 100, weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk };

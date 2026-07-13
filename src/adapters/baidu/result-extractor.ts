@@ -18,6 +18,13 @@ import { isPromotedResult } from './promoted-detector';
 const DIAG_PREFIX = '[SearchLens:extractor]';
 const UNKNOWN_SOURCE = 'unknown';
 const RESULT_CONTAINER_SELECTOR = 'div.c-container, div.ec_result, div.ec_wise_ad, div.result-op';
+const SEARCHLENS_ROOT_SELECTOR = '#searchlens-panel, [data-searchlens-root="true"]';
+
+// Small, locally maintained heuristic list. This is not a copied commercial ruleset.
+const THIRD_PARTY_DOWNLOAD_DOMAINS = new Set([
+  'downcc.com', 'cr173.com', 'pc6.com', 'xitong.com',
+  'win7.com', 'win10.com', 'mydown.com', 'onlinedown.net',
+]);
 
 const BAIDU_DOMAIN_CLASSES: Record<string, ResultType> = {
   'baike.baidu.com': 'baidu_baike',
@@ -46,12 +53,7 @@ function isContainerVisible(el: Element): boolean {
 }
 
 function isInsideSearchLensPanel(el: Element): boolean {
-  let cur: Element | null = el;
-  while (cur) {
-    if (cur.id === 'searchlens-panel') return true;
-    cur = cur.parentElement;
-  }
-  return false;
+  return el.closest(SEARCHLENS_ROOT_SELECTOR) !== null;
 }
 
 function isGenericBaiduTarget(url: string): boolean {
@@ -219,12 +221,17 @@ function extractSingleResult(element: Element, rank: number): SearchResult | nul
 }
 
 function classifyBaiduType(domain: string, isAd: boolean): ResultType {
+  const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+  if ([...THIRD_PARTY_DOWNLOAD_DOMAINS].some(known =>
+    normalizedDomain === known || normalizedDomain.endsWith(`.${known}`)
+  )) return 'third_party_download_site';
+
   if (isAd) return 'ad_or_promoted';
 
   for (const [baiduDomain, type] of Object.entries(BAIDU_DOMAIN_CLASSES)) {
-    if (domain === baiduDomain) return type;
+    if (normalizedDomain === baiduDomain) return type;
   }
 
-  if (domain === 'github.com') return 'github_repo';
+  if (normalizedDomain === 'github.com') return 'github_repo';
   return 'unknown';
 }

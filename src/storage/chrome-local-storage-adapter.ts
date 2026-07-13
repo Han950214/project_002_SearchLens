@@ -95,7 +95,8 @@ export const storageAdapter = {
   async getSettings(): Promise<SearchLensSettings> {
     try {
       const raw = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
-      return (raw[STORAGE_KEYS.SETTINGS] as SearchLensSettings) ?? { ...DEFAULT_SETTINGS };
+      const stored = raw[STORAGE_KEYS.SETTINGS] as Partial<SearchLensSettings> | undefined;
+      return { ...DEFAULT_SETTINGS, ...stored };
     } catch (err) {
       console.error('[SearchLens] Failed to get settings:', err);
       throw err;
@@ -143,6 +144,9 @@ export const storageAdapter = {
       const prefs = await this.getDomainPreferences();
       const normalizedDomain = normalizeDomain(domain);
       if (!normalizedDomain) throw new Error('A valid domain is required.');
+      if (!['promote', 'demote', 'hide'].includes(action)) {
+        throw new Error('A valid domain preference action is required.');
+      }
       prefs[normalizedDomain] = action;
       await chrome.storage.local.set({
         [STORAGE_KEYS.DOMAIN_PREFERENCES]: prefs,
@@ -165,6 +169,20 @@ export const storageAdapter = {
       });
     } catch (err) {
       console.error('[SearchLens] Failed to remove domain preference:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Clear domain preferences without changing the rest of the settings.
+   */
+  async clearDomainPreferences(): Promise<void> {
+    try {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.DOMAIN_PREFERENCES]: {},
+      });
+    } catch (err) {
+      console.error('[SearchLens] Failed to clear domain preferences:', err);
       throw err;
     }
   },

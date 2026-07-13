@@ -24,13 +24,12 @@ export default defineBackground(() => {
         const r = msg.payload as { domain: string };
         return storageAdapter.removeDomainPreference(r.domain);
       }
+      case 'CLEAR_DOMAIN_PREFERENCES':
+        return storageAdapter.clearDomainPreferences();
       case 'OPEN_OPTIONS':
-        try {
-          browser.runtime.openOptionsPage();
-        } catch {
-          browser.tabs.create({ url: browser.runtime.getURL('/options.html') });
-        }
-        return Promise.resolve(null);
+        return browser.runtime.openOptionsPage().catch(() =>
+          browser.tabs.create({ url: browser.runtime.getURL('/options.html') })
+        );
       default:
         console.warn('[SearchLens] Unknown message type:', msg.type);
         return Promise.resolve(null);

@@ -9,6 +9,7 @@
  */
 import type { SearchResult, ConfidenceLevel, ScoreReason } from '../models/search-result';
 import { scoreResult, detectIntent, type ScoringContext, type ScoredResult } from './scoring-engine';
+import { normalizeDomain } from '../utils/domain';
 
 /** Flat domain → action map as used by content script and storage */
 export type DomainPrefMap = Record<string, 'promote' | 'demote' | 'hide'>;
@@ -65,13 +66,13 @@ export function getRecommendations(options: RecommendationOptions): Recommendati
 
   // Separate hidden results
   const hidden = scored.filter(r => {
-    const d = r.domain?.toLowerCase().replace(/^www\./, '').trim();
+    const d = normalizeDomain(r.domain ?? '');
     return d ? userPrefs[d] === 'hide' : false;
   });
 
   // Filtered (exclude hidden)
   const visible = scored.filter(r => {
-    const d = r.domain?.toLowerCase().replace(/^www\./, '').trim();
+    const d = normalizeDomain(r.domain ?? '');
     return !(d && userPrefs[d] === 'hide');
   });
 
@@ -138,9 +139,9 @@ export function toDisplayItem(result: ScoredResult, rank: number): Recommendatio
 
 function getConfidenceLabel(c: ConfidenceLevel): string {
   switch (c) {
-    case 'high':   return '高可信';
-    case 'medium': return '中等可信';
-    case 'low':    return '低可信';
+    case 'high':   return '较高参考';
+    case 'medium': return '中等参考';
+    case 'low':    return '较低参考';
     default:       return '未知';
   }
 }

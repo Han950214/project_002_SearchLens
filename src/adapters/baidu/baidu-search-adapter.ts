@@ -35,21 +35,24 @@ export interface ScoredAdapterOutput extends AdapterOutput {
  * Returns normalized results or a safe failure state.
  */
 export function runBaiduAdapter(doc: Document = document): AdapterOutput {
+  let pageKind: PageKind = 'not_baidu_search';
+  let query = '';
+
   try {
-    const pageKind = detectPageKind(doc);
+    pageKind = detectPageKind(doc);
     if (pageKind !== 'web_search') {
       return { pageKind, query: '', results: [] };
     }
 
-    const query = extractSearchQuery(doc);
+    query = extractSearchQuery(doc);
     const results = extractResults(doc);
 
     return { pageKind, query, results };
   } catch (err) {
     console.error('[SearchLens] Adapter error:', err);
     return {
-      pageKind: 'not_baidu_search',
-      query: '',
+      pageKind,
+      query,
       results: [],
       error: err instanceof Error ? err.message : 'Unknown adapter error',
     };
@@ -81,6 +84,10 @@ export function runScoredAdapter(
     return { ...base, recommendations };
   } catch (err) {
     console.error('[SearchLens] Scoring error:', err);
-    return { ...base, recommendations: undefined };
+    return {
+      ...base,
+      recommendations: undefined,
+      error: err instanceof Error ? err.message : 'Unknown scoring error',
+    };
   }
 }
