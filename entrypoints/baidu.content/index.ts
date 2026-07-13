@@ -133,10 +133,23 @@ export default defineContentScript({
       });
       container.querySelector("#searchlens-body")?.addEventListener("click", (event) => {
         const target = event.target as Element | null;
-        const button = target?.closest<HTMLButtonElement>("button[data-pref-action]");
-        const domain = button?.dataset.domain;
-        const action = button?.dataset.prefAction as "promote" | "demote" | "hide" | undefined;
-        if (button && domain && action) void setDomainPreference(button, domain, action);
+        const preferenceButton = target?.closest<HTMLButtonElement>("button[data-pref-action]");
+        const domain = preferenceButton?.dataset.domain;
+        const action = preferenceButton?.dataset.prefAction as "promote" | "demote" | "hide" | undefined;
+        if (preferenceButton && domain && action) {
+          void setDomainPreference(preferenceButton, domain, action);
+          return;
+        }
+
+        const detailButton = target?.closest<HTMLButtonElement>("button[data-detail-toggle]");
+        const card = detailButton?.closest<HTMLElement>(".searchlens-card");
+        const details = card?.querySelector<HTMLElement>(".searchlens-details");
+        if (detailButton && details) {
+          const expanded = details.hidden;
+          details.hidden = !expanded;
+          detailButton.setAttribute("aria-expanded", String(expanded));
+          detailButton.textContent = expanded ? "收起原因" : "查看原因";
+        }
       });
 
       return container;
@@ -223,21 +236,26 @@ export default defineContentScript({
       const title = safeUrl
         ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>`
         : `<span>${escapeHtml(item.title)}</span>`;
-      const reasonHtml = showReasons
-        ? `<div class="searchlens-reasons"><span class="searchlens-meta-label">评分理由</span>${item.reasons.slice(0, 3).map(reason =>
-          `<span class="searchlens-reason">${escapeHtml(reason.label)}</span>`
-        ).join("")}</div>`
-        : "";
-      const confidenceHtml = showConfidence
-        ? `<span class="searchlens-confidence ${item.confidenceClass}">${escapeHtml(item.confidenceLabel)}</span>`
-        : "";
+      const detailsId = `searchlens-details-${rank}`;
+      const preferenceLabel = preference
+        ? ({ promote: "已提升", demote: "已降低", hide: "已隐藏" } as const)[preference]
+        : "未设置";
+      const reasonDetailsHtml = showReasons
+        ? `<div class="searchlens-detail-row"><dt>主要原因</dt><dd>${escapeHtml(item.topReason || "暂无主要原因")}</dd></div>
+          <div class="searchlens-detail-row"><dt>规则命中</dt><dd class="searchlens-rule-list">${item.reasons.length > 0
+            ? item.reasons.map(reason => `<span>${escapeHtml(reason.label)}</span>`).join("")
+            : "暂无可展示规则"}</dd></div>`
+        : `<div class="searchlens-detail-row"><dt>评分理由</dt><dd>已在设置中关闭</dd></div>`;
       const scoreHtml = showConfidence
         ? `<div class="searchlens-score ${item.scoreBarClass}" title="可信度分数 ${item.score}">
-            <strong>${item.score}</strong><span>可信度</span>
+            <strong>${item.score}</strong><span>可信度参考</span>
           </div>`
         : "";
-      const warningHtml = warnThirdPartyDownloadSites && result.detectedType === "third_party_download_site"
-        ? `<div class="searchlens-warning"><strong>第三方下载站谨慎</strong><span>建议优先核对软件官网或官方应用商店。</span></div>`
+      const confidenceDetailsHtml = showConfidence
+        ? `<div class="searchlens-detail-row"><dt>参考等级</dt><dd>${escapeHtml(item.confidenceLabel)}</dd></div>`
+        : "";
+      const warningDetailsHtml = warnThirdPartyDownloadSites && result.detectedType === "third_party_download_site"
+        ? `<div class="searchlens-detail-warning">第三方下载站提示：建议优先核对软件官网或官方应用商店。</div>`
         : "";
 
       return `<article class="searchlens-card" data-domain="${escapeHtml(domain)}">
@@ -245,25 +263,30 @@ export default defineContentScript({
         <div class="searchlens-card-main">
           <div class="searchlens-title-row">
             <h3 class="searchlens-title">${title}</h3>
+            <span class="searchlens-inline-domain" title="${escapeHtml(getSourceLabel(result))}">${escapeHtml(getSourceLabel(result))}</span>
             ${scoreHtml}
           </div>
-          <div class="searchlens-source-row">
-            <span class="searchlens-domain">${escapeHtml(getSourceLabel(result))}</span>
-            <span>百度原始第 ${item.originalRank} 位</span>
-          </div>
-          <div class="searchlens-tags">${renderTypeTags(result)}${confidenceHtml}</div>
-          ${reasonHtml}
-          ${warningHtml}
+          <div class="searchlens-tags">${renderCompactTags(result)}</div>
           <div class="searchlens-actions" aria-label="${escapeHtml(domain)} 的域名偏好">
-            ${renderPreferenceButton(domain, "promote", preference)}
-            ${renderPreferenceButton(domain, "demote", preference)}
-            ${renderPreferenceButton(domain, "hide", preference)}
+            <div class="searchlens-pref-actions">
+              ${renderPreferenceButton(domain, "promote", preference)}
+              ${renderPreferenceButton(domain, "demote", preference)}
+              ${renderPreferenceButton(domain, "hide", preference)}
+            </div>
+            <button class="searchlens-detail-toggle" type="button" data-detail-toggle aria-expanded="false" aria-controls="${detailsId}">查看原因</button>
           </div>
+          <dl class="searchlens-details" id="${detailsId}" hidden>
+            ${reasonDetailsHtml}
+            ${confidenceDetailsHtml}
+            <div class="searchlens-detail-row"><dt>百度原始排名</dt><dd>第 ${item.originalRank} 位</dd></div>
+            <div class="searchlens-detail-row"><dt>用户偏好</dt><dd>${preferenceLabel}</dd></div>
+            ${warningDetailsHtml}
+          </dl>
         </div>
       </article>`;
     }
 
-    function renderTypeTags(result: SearchResult): string {
+    function renderCompactTags(result: SearchResult): string {
       const tags: Array<{ label: string; className: string }> = [];
       const reasonCodes = new Set(result.reasons.map(reason => reason.code));
       const baiduLabels: Record<string, string> = {
@@ -274,24 +297,30 @@ export default defineContentScript({
         baijiahao: "百度系 · 百家号",
       };
 
-      if (reasonCodes.has("official_domain_match") || reasonCodes.has("official_domain_partial")) {
-        tags.push({ label: "官网 / 官方来源", className: "tag-official" });
+      if (result.detectedType === "third_party_download_site") {
+        tags.push({ label: "下载站风险", className: "tag-warning" });
+      }
+      if (result.isAdOrPromoted) tags.push({ label: "推广", className: "tag-ad" });
+
+      if (reasonCodes.has("official_domain_match")) {
+        tags.push({ label: "官网", className: "tag-official" });
+      } else if (reasonCodes.has("official_domain_partial")) {
+        tags.push({ label: "官方来源", className: "tag-official" });
       } else if (reasonCodes.has("high_trust_domain")) {
         tags.push({ label: "可信来源", className: "tag-trusted" });
       }
 
-      if (result.detectedType === "third_party_download_site") {
-        tags.push({ label: "第三方下载站", className: "tag-warning" });
-      } else if (baiduLabels[result.detectedType]) {
+      if (baiduLabels[result.detectedType]) {
         tags.push({ label: baiduLabels[result.detectedType], className: "tag-baidu" });
-      } else if (result.detectedType !== "unknown" && result.detectedType !== "ad_or_promoted") {
+      } else if (result.detectedType !== "unknown" && result.detectedType !== "ad_or_promoted" && result.detectedType !== "third_party_download_site") {
         tags.push({ label: toDisplayItem(result, 0).typeLabel, className: "tag-neutral" });
       }
 
-      if (result.isAdOrPromoted) tags.push({ label: "推广", className: "tag-ad" });
       if (tags.length === 0) tags.push({ label: "其他来源", className: "tag-neutral" });
 
-      return tags.map(tag => `<span class="searchlens-type-tag ${tag.className}">${escapeHtml(tag.label)}</span>`).join("");
+      return tags.slice(0, 2).map(tag =>
+        `<span class="searchlens-type-tag ${tag.className}">${escapeHtml(tag.label)}</span>`
+      ).join("");
     }
 
     function renderPreferenceButton(
@@ -314,14 +343,20 @@ export default defineContentScript({
       action: "promote" | "demote" | "hide",
     ): Promise<void> {
       const card = button.closest<HTMLElement>(".searchlens-card");
+      const originalButtonText = button.textContent;
       card?.classList.add("is-saving");
       card?.querySelectorAll<HTMLButtonElement>(".searchlens-pref-btn").forEach(item => { item.disabled = true; });
+      button.textContent = action === "hide" ? "正在隐藏…" : "保存中…";
 
       try {
         await browser.runtime.sendMessage({
           type: "SET_DOMAIN_PREFERENCE",
           payload: { domain, action },
         });
+        if (action === "hide") {
+          card?.classList.add("is-hiding");
+          await new Promise<void>(resolve => window.setTimeout(resolve, 140));
+        }
         domainPrefs[normalizeDomain(domain)] = action;
         refreshRecommendationsFromCurrentResults();
         const messages = {
@@ -334,6 +369,7 @@ export default defineContentScript({
         console.error("[SearchLens] Failed to set domain preference:", err);
         card?.classList.remove("is-saving");
         card?.querySelectorAll<HTMLButtonElement>(".searchlens-pref-btn").forEach(item => { item.disabled = false; });
+        button.textContent = originalButtonText;
         showToast("偏好保存失败，请稍后重试。", "error");
       }
     }
