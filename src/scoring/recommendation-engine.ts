@@ -8,7 +8,9 @@
  * confidence indicators, and reason tooltips.
  */
 import type { SearchResult, ConfidenceLevel, ScoreReason } from '../models/search-result';
-import { scoreResult, detectIntent, type ScoringContext, type ScoredResult } from './scoring-engine';
+import { resolveQueryEntity } from '../rules/entity-rules';
+import { scoreResult, type ScoringContext, type ScoredResult } from './scoring-engine';
+import { detectIntent } from './query-intent';
 import {
   evaluateTrustPolicy,
   type TrustPolicyDecision,
@@ -51,7 +53,7 @@ export interface RecommendationOptions {
 /**
  * Run the full scoring + ranking pipeline.
  *
- * 1. Detect search intent from query
+ * 1. Detect search intent and resolve one unambiguous query entity
  * 2. Apply deterministic Trust Policy Gate
  * 3. Soft-score allowed results
  * 4. Sort by score descending
@@ -67,10 +69,17 @@ export function getRecommendations(options: RecommendationOptions): Recommendati
   } = options;
 
   const intent = detectIntent(query);
+  const entityMatch = resolveQueryEntity(query);
 
   const userPrefs = domainPreferences;
 
-  const ctx: ScoringContext = { query, intent, userPreferences: userPrefs, weights };
+  const ctx: ScoringContext = {
+    query,
+    intent,
+    entityMatch,
+    userPreferences: userPrefs,
+    weights,
+  };
 
   const allowed: SearchResult[] = [];
   const excluded: ExcludedRecommendation[] = [];

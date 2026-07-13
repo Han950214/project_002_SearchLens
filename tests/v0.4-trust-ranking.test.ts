@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import type { ScoreReason, SearchResult } from '../src/models/search-result';
+import { resolveQueryEntity } from '../src/rules/entity-rules';
 import {
   DEFAULT_WEIGHTS,
-  detectIntent,
   scoreResult,
   type ScoringContext,
 } from '../src/scoring/scoring-engine';
+import { detectIntent } from '../src/scoring/query-intent';
 import {
   getCompactSourceTag,
   getRecommendations,
@@ -36,11 +37,13 @@ function score(
   result: SearchResult,
   overrides: Partial<ScoringContext> = {},
 ) {
+  const query = overrides.query ?? '普通查询';
   return scoreResult(result, {
-    query: '普通查询',
-    intent: 'general',
-    userPreferences: {},
-    ...overrides,
+    query,
+    intent: overrides.intent ?? 'general',
+    entityMatch: overrides.entityMatch ?? resolveQueryEntity(query),
+    userPreferences: overrides.userPreferences ?? {},
+    weights: overrides.weights,
   });
 }
 
@@ -58,13 +61,13 @@ function assertFiniteScoring(result: ReturnType<typeof scoreResult>): void {
   }
 }
 
-// Default weights preserve the pre-v0.4 representative scores.
+// Default weights stay fixed; removing duplicated entity-domain trust changes the official score.
 {
   const neutral = scoreResult(makeResult({
     title: '微信电脑版下载',
     snippet: '微信官方下载页面',
   }), {
-    query: '', intent: 'general', userPreferences: {},
+    query: '', intent: 'general', entityMatch: resolveQueryEntity(''), userPreferences: {},
   });
   const official = scoreResult(makeResult({
     title: '微信官网',
@@ -73,11 +76,14 @@ function assertFiniteScoring(result: ReturnType<typeof scoreResult>): void {
     displayUrl: 'weixin.qq.com',
     snippet: '微信官方网站',
   }), {
-    query: '微信官网', intent: 'official_site', userPreferences: {},
+    query: '微信官网',
+    intent: 'official_site',
+    entityMatch: resolveQueryEntity('微信官网'),
+    userPreferences: {},
   });
 
   assert.equal(neutral.score, 18);
-  assert.equal(official.score, 76);
+  assert.equal(official.score, 68);
   assert.deepEqual(DEFAULT_WEIGHTS, {
     officialSignal: 40,
     intentMatch: 15,
@@ -126,8 +132,8 @@ function assertFiniteScoring(result: ReturnType<typeof scoreResult>): void {
 // Custom risk weights and Partial merging are used by the actual signal path.
 {
   const promoted = makeResult({
-    domain: 'weixin.qq.com',
-    displayUrl: 'weixin.qq.com',
+    domain: 'azure.com',
+    displayUrl: 'azure.com',
     isAdOrPromoted: true,
   });
   const defaultPenalty = score(promoted);
@@ -389,7 +395,7 @@ function assertFiniteScoring(result: ReturnType<typeof scoreResult>): void {
 // Representative v0.4-A intents and result types remain locally scoreable.
 {
   const scenarios = [
-    ['微信官网', '微信官方网站', 'sensitive_official'],
+    ['微信官网', '微信官方网站', 'official_site'],
     ['微信下载', '微信客户端下载', 'download'],
     ['微信登录', '微信登录入口', 'login'],
     ['微信 API 文档', '微信开发文档 API', 'official_docs'],
@@ -402,7 +408,7 @@ function assertFiniteScoring(result: ReturnType<typeof scoreResult>): void {
       title,
       domain: 'weixin.qq.com',
       displayUrl: 'weixin.qq.com',
-    }), { query, intent, userPreferences: {} });
+    }), { query, intent, entityMatch: resolveQueryEntity(query), userPreferences: {} });
     assert.ok(scored.score >= 0 && scored.score <= 100);
     assert.ok(scored.reasons.some(reason => reason.code.startsWith('official_domain_')));
   }

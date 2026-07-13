@@ -16,7 +16,9 @@
  */
 
 import assert from 'node:assert/strict';
-import { scoreResult, detectIntent } from '../src/scoring/scoring-engine';
+import { resolveQueryEntity } from '../src/rules/entity-rules';
+import { scoreResult } from '../src/scoring/scoring-engine';
+import { detectIntent } from '../src/scoring/query-intent';
 import { getRecommendations } from '../src/scoring/recommendation-engine';
 import { evaluateTrustPolicy } from '../src/scoring/trust-policy';
 import type { SearchResult } from '../src/models/search-result';
@@ -47,7 +49,9 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
 
 {
   const result = makeResult({ domain: 'example.com', displayUrl: 'example.com' });
-  const ctx = { query: '', intent: 'general' as const, userPreferences: {} };
+  const ctx = {
+    query: '', intent: 'general' as const, entityMatch: resolveQueryEntity(''), userPreferences: {},
+  };
   const scored = scoreResult(result, ctx);
 
   assert.equal(typeof scored.score, 'number', 'score is a number');
@@ -69,7 +73,12 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     displayUrl: 'weixin.qq.com',
     snippet: '微信官方网站',
   });
-  const ctx = { query: '微信官网', intent: 'official_site' as const, userPreferences: {} };
+  const ctx = {
+    query: '微信官网',
+    intent: 'official_site' as const,
+    entityMatch: resolveQueryEntity('微信官网'),
+    userPreferences: {},
+  };
   const scored = scoreResult(result, ctx);
 
   assert.ok(scored.score >= 60, `official domain should score ≥60, got ${scored.score}`);
@@ -88,7 +97,12 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     displayUrl: 'downcc.com',
     isAdOrPromoted: true,
   });
-  const ctx = { query: '微信下载', intent: 'download' as const, userPreferences: {} };
+  const ctx = {
+    query: '微信下载',
+    intent: 'download' as const,
+    entityMatch: resolveQueryEntity('微信下载'),
+    userPreferences: {},
+  };
   const scored = scoreResult(result, ctx);
 
   assert.ok(scored.score <= 40, `ad result should score ≤40, got ${scored.score}`);
@@ -100,7 +114,8 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
 // ─── Test 4: Intent detection ────────────────────────────────────────────
 
 {
-  assert.equal(detectIntent('微信官网'), 'sensitive_official', '官网 → sensitive_official');
+  assert.equal(detectIntent('微信官网'), 'official_site', '官网 → official_site');
+  assert.equal(detectIntent('微信官方下载'), 'download', '官方下载 → download');
   assert.equal(detectIntent('微信下载'), 'download', '下载 → download');
   assert.equal(detectIntent('微信 API 文档'), 'official_docs', '文档 → official_docs');
   assert.equal(detectIntent('微信登录'), 'login', '登录 → login');
@@ -127,8 +142,15 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   const neutral = makeResult({ domain: 'neut.example.com', displayUrl: 'neut.example.com' });
   const promoted = makeResult({ domain: 'neut.example.com', displayUrl: 'neut.example.com' });
 
-  const ctxNeutral = { query: 'test', intent: 'general' as const, userPreferences: {} };
-  const ctxPromoted = { query: 'test', intent: 'general' as const, userPreferences: { 'neut.example.com': 'promote' as const } };
+  const ctxNeutral = {
+    query: 'test', intent: 'general' as const, entityMatch: resolveQueryEntity('test'), userPreferences: {},
+  };
+  const ctxPromoted = {
+    query: 'test',
+    intent: 'general' as const,
+    entityMatch: resolveQueryEntity('test'),
+    userPreferences: { 'neut.example.com': 'promote' as const },
+  };
 
   const scoredNeutral = scoreResult(neutral, ctxNeutral);
   const scoredPromoted = scoreResult(promoted, ctxPromoted);
@@ -188,6 +210,7 @@ console.log('  Test 8 OK — limit respected: top 2 of 4');
   const scored = scoreResult(downloadSite, {
     query: '微信下载',
     intent: 'download',
+    entityMatch: resolveQueryEntity('微信下载'),
     userPreferences: {},
   });
 
@@ -201,10 +224,13 @@ console.log('  Test 8 OK — limit respected: top 2 of 4');
 
 {
   const result = makeResult({ domain: 'neutral.example.com', displayUrl: 'neutral.example.com' });
-  const neutral = scoreResult(result, { query: 'test', intent: 'general', userPreferences: {} });
+  const neutral = scoreResult(result, {
+    query: 'test', intent: 'general', entityMatch: resolveQueryEntity('test'), userPreferences: {},
+  });
   const demoted = scoreResult(result, {
     query: 'test',
     intent: 'general',
+    entityMatch: resolveQueryEntity('test'),
     userPreferences: { 'neutral.example.com': 'demote' },
   });
 
