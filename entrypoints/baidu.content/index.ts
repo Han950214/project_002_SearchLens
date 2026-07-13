@@ -1,6 +1,10 @@
 import "./style.css";
 import { runScoredAdapter, type DomainPrefMap } from "../../src/adapters/baidu/baidu-search-adapter";
-import { getRecommendations, toDisplayItem } from "../../src/scoring/recommendation-engine";
+import {
+  getCompactSourceTag,
+  getRecommendations,
+  toDisplayItem,
+} from "../../src/scoring/recommendation-engine";
 import type { ScoredAdapterOutput } from "../../src/adapters/baidu/baidu-search-adapter";
 import type { SearchResult } from "../../src/models/search-result";
 import type { SearchLensSettings } from "../../src/storage/chrome-local-storage-adapter";
@@ -288,7 +292,6 @@ export default defineContentScript({
 
     function renderCompactTags(result: SearchResult): string {
       const tags: Array<{ label: string; className: string }> = [];
-      const reasonCodes = new Set(result.reasons.map(reason => reason.code));
       const baiduLabels: Record<string, string> = {
         baidu_baike: "百度系 · 百科",
         baidu_zhidao: "百度系 · 知道",
@@ -302,13 +305,8 @@ export default defineContentScript({
       }
       if (result.isAdOrPromoted) tags.push({ label: "推广", className: "tag-ad" });
 
-      if (reasonCodes.has("official_domain_match")) {
-        tags.push({ label: "官网", className: "tag-official" });
-      } else if (reasonCodes.has("official_domain_partial")) {
-        tags.push({ label: "官方来源", className: "tag-official" });
-      } else if (reasonCodes.has("high_trust_domain")) {
-        tags.push({ label: "可信来源", className: "tag-trusted" });
-      }
+      const sourceTag = getCompactSourceTag(result.reasons);
+      if (sourceTag) tags.push(sourceTag);
 
       if (baiduLabels[result.detectedType]) {
         tags.push({ label: baiduLabels[result.detectedType], className: "tag-baidu" });

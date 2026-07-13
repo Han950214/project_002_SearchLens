@@ -12,7 +12,18 @@ export type QueryIntent =
 
 export type ConfidenceLevel = "high" | "medium" | "low" | "unknown";
 
-export interface ScoreReason { code: string; label: string; weight: number; confidence: ConfidenceLevel; }
+export type ScoreReasonCategory = "positive" | "negative" | "user_preference" | "policy";
+export type ScoreReasonEffect = "increase" | "decrease" | "exclude";
+
+export interface ScoreReason {
+  code: string;
+  label: string;
+  weight: number;
+  scoreImpact: number;
+  category: ScoreReasonCategory;
+  effect: ScoreReasonEffect;
+  confidence: ConfidenceLevel;
+}
 
 export interface SearchResult {
   id: string; title: string; url: string; resolvedUrl?: string; domain?: string;

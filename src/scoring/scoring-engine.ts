@@ -103,6 +103,51 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
   suspiciousDomainRisk:   -25,
 };
 
+const POSITIVE_WEIGHT_KEYS: Array<keyof ScoringWeights> = [
+  'officialSignal',
+  'intentMatch',
+  'sourceTrust',
+  'userPreference',
+  'docsOrRepoBonus',
+];
+
+const RISK_WEIGHT_KEYS: Array<keyof ScoringWeights> = [
+  'adRisk',
+  'thirdPartyDownloadRisk',
+  'seoMarketingRisk',
+  'suspiciousDomainRisk',
+];
+
+function resolveScoringWeights(overrides?: Partial<ScoringWeights>): ScoringWeights {
+  const resolved = { ...DEFAULT_WEIGHTS };
+
+  for (const key of POSITIVE_WEIGHT_KEYS) {
+    const value = overrides?.[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+      resolved[key] = value;
+    }
+  }
+
+  for (const key of RISK_WEIGHT_KEYS) {
+    const value = overrides?.[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value <= 0) {
+      resolved[key] = value;
+    }
+  }
+
+  return resolved;
+}
+
+function toFiniteScoreImpact(value: number): number {
+  const finiteValue = Number.isFinite(value)
+    ? value
+    : value < 0
+      ? -Number.MAX_VALUE
+      : Number.MAX_VALUE;
+  const scaled = finiteValue * 100;
+  return Number.isFinite(scaled) ? Math.round(scaled) / 100 : finiteValue;
+}
+
 // ── Trust levels by domain category ──
 
 const TRUSTED_DOMAIN_SUFFIXES = [
@@ -170,13 +215,19 @@ function scoreSourceTrust(domain: string): number {
 
 interface SignalResult {
   score: number;       // raw 0-100
+  neutralScore: number;
   weight: number;      // from ScoringWeights
-  reason?: ScoreReason;
+  reason?: Omit<ScoreReason, 'weight' | 'scoreImpact'>;
 }
 
-function officialSignalScore(result: SearchResult, intent: QueryIntent): SignalResult {
+function officialSignalScore(
+  result: SearchResult,
+  intent: QueryIntent,
+  weights: ScoringWeights,
+): SignalResult {
+  const weight = weights.officialSignal;
   const domain = normalizeDomain(result.domain || '');
-  if (!domain) return { score: 0, weight: DEFAULT_WEIGHTS.officialSignal };
+  if (!domain) return { score: 0, neutralScore: 0, weight };
 
   // Check if domain matches an official entry for the detected intent
   for (const entry of OFFICIAL_DOMAIN_REGISTRY) {
@@ -189,11 +240,13 @@ function officialSignalScore(result: SearchResult, intent: QueryIntent): SignalR
     if (intentMatch) {
       return {
         score: 100,
-        weight: DEFAULT_WEIGHTS.officialSignal,
+        neutralScore: 0,
+        weight,
         reason: {
           code: 'official_domain_match',
           label: `官方域名特征：匹配 ${label}`,
-          weight: DEFAULT_WEIGHTS.officialSignal,
+          category: 'positive',
+          effect: 'increase',
           confidence: 'high',
         },
       };
@@ -202,21 +255,29 @@ function officialSignalScore(result: SearchResult, intent: QueryIntent): SignalR
     // Domain is official but for a different intent — still valuable but less
     return {
       score: 60,
-      weight: DEFAULT_WEIGHTS.officialSignal * 0.6,
+      neutralScore: 0,
+      weight: weight * 0.6,
       reason: {
         code: 'official_domain_partial',
         label: `官方域名特征：来自 ${label}`,
-        weight: DEFAULT_WEIGHTS.officialSignal,
+        category: 'positive',
+        effect: 'increase',
         confidence: 'medium',
       },
     };
   }
 
-  return { score: 0, weight: DEFAULT_WEIGHTS.officialSignal };
+  return { score: 0, neutralScore: 0, weight };
 }
 
-function intentMatchScore(result: SearchResult, query: string, intent: QueryIntent): SignalResult {
-  if (!query) return { score: 50, weight: DEFAULT_WEIGHTS.intentMatch }; // no query = neutral
+function intentMatchScore(
+  result: SearchResult,
+  query: string,
+  intent: QueryIntent,
+  weights: ScoringWeights,
+): SignalResult {
+  const weight = weights.intentMatch;
+  if (!query) return { score: 50, neutralScore: 50, weight }; // no query = neutral
 
   const titleAndSnippet = `${result.title} ${result.snippet || ''}`.toLowerCase();
   const patterns = INTENT_PATTERNS[intent];
@@ -225,29 +286,34 @@ function intentMatchScore(result: SearchResult, query: string, intent: QueryInte
   if (matchingPatterns.length > 0) {
     return {
       score: Math.min(100, 50 + matchingPatterns.length * 20),
-      weight: DEFAULT_WEIGHTS.intentMatch,
+      neutralScore: 50,
+      weight,
       reason: {
         code: 'intent_match',
         label: `标题/摘要匹配搜索意图`,
-        weight: DEFAULT_WEIGHTS.intentMatch,
+        category: 'positive',
+        effect: 'increase',
         confidence: matchingPatterns.length >= 2 ? 'high' : 'medium',
       },
     };
   }
 
-  return { score: 30, weight: DEFAULT_WEIGHTS.intentMatch };
+  return { score: 30, neutralScore: 50, weight };
 }
 
-function sourceTrustScore(result: SearchResult): SignalResult {
+function sourceTrustScore(result: SearchResult, weights: ScoringWeights): SignalResult {
+  const weight = weights.sourceTrust;
   const trust = scoreSourceTrust(result.domain || '');
   if (trust >= 80) {
     return {
       score: trust,
-      weight: DEFAULT_WEIGHTS.sourceTrust,
+      neutralScore: 50,
+      weight,
       reason: {
-        code: 'high_trust_domain',
+        code: 'trusted_source',
         label: `可信来源特征`,
-        weight: DEFAULT_WEIGHTS.sourceTrust,
+        category: 'positive',
+        effect: 'increase',
         confidence: 'high',
       },
     };
@@ -255,93 +321,137 @@ function sourceTrustScore(result: SearchResult): SignalResult {
   if (trust <= 20) {
     return {
       score: trust,
-      weight: DEFAULT_WEIGHTS.sourceTrust,
+      neutralScore: 50,
+      weight,
       reason: {
-        code: 'low_trust_domain',
+        code: 'low_trust_source',
         label: `低可信来源`,
-        weight: DEFAULT_WEIGHTS.sourceTrust,
+        category: 'negative',
+        effect: 'decrease',
         confidence: 'low',
       },
     };
   }
-  return { score: trust, weight: DEFAULT_WEIGHTS.sourceTrust };
+  return { score: trust, neutralScore: 50, weight };
 }
 
 function userPreferenceScore(
   result: SearchResult,
   preferences: Record<string, 'promote' | 'demote' | 'hide'>,
+  weights: ScoringWeights,
 ): SignalResult {
+  const weight = weights.userPreference;
   const domain = normalizeDomain(result.domain || '');
-  if (!domain || !preferences[domain]) return { score: 50, weight: DEFAULT_WEIGHTS.userPreference };
+  if (!domain || !preferences[domain]) return { score: 50, neutralScore: 50, weight };
 
   const action = preferences[domain];
   if (action === 'promote') {
     return {
       score: 100,
-      weight: DEFAULT_WEIGHTS.userPreference,
-      reason: { code: 'user_promoted', label: `用户已提升`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
+      neutralScore: 50,
+      weight,
+      reason: {
+        code: 'user_preference_boost',
+        label: '用户已提升',
+        category: 'user_preference',
+        effect: 'increase',
+        confidence: 'high',
+      },
     };
   }
   if (action === 'demote') {
     return {
       score: 10,
-      weight: DEFAULT_WEIGHTS.userPreference,
-      reason: { code: 'user_demoted', label: `用户已降低`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
-    };
-  }
-  if (action === 'hide') {
-    return {
-      score: 0,
-      weight: DEFAULT_WEIGHTS.userPreference,
-      reason: { code: 'user_hidden', label: `用户已隐藏`, weight: DEFAULT_WEIGHTS.userPreference, confidence: 'high' },
+      neutralScore: 50,
+      weight,
+      reason: {
+        code: 'user_preference_lower',
+        label: '用户已降低',
+        category: 'user_preference',
+        effect: 'decrease',
+        confidence: 'high',
+      },
     };
   }
 
-  return { score: 50, weight: DEFAULT_WEIGHTS.userPreference };
+  // `hide` is consumed by the Trust Policy Gate before this soft-scoring path.
+  return { score: 50, neutralScore: 50, weight };
 }
 
-function docsOrRepoBonusScore(result: SearchResult): SignalResult {
+function docsOrRepoBonusScore(result: SearchResult, weights: ScoringWeights): SignalResult {
+  const weight = weights.docsOrRepoBonus;
   if (result.detectedType === 'github_repo') {
     return {
       score: 100,
-      weight: DEFAULT_WEIGHTS.docsOrRepoBonus,
-      reason: { code: 'github_repo', label: 'GitHub 仓库', weight: DEFAULT_WEIGHTS.docsOrRepoBonus, confidence: 'high' },
+      neutralScore: 0,
+      weight,
+      reason: {
+        code: 'documentation_or_repository_bonus',
+        label: 'GitHub 仓库',
+        category: 'positive',
+        effect: 'increase',
+        confidence: 'high',
+      },
     };
   }
   if (result.detectedType === 'baidu_baike') {
     return {
       score: 70,
-      weight: DEFAULT_WEIGHTS.docsOrRepoBonus,
-      reason: { code: 'baike_entry', label: '百度百科条目', weight: DEFAULT_WEIGHTS.docsOrRepoBonus, confidence: 'medium' },
+      neutralScore: 0,
+      weight,
+      reason: {
+        code: 'reference_entry_bonus',
+        label: '百度百科条目',
+        category: 'positive',
+        effect: 'increase',
+        confidence: 'medium',
+      },
     };
   }
 
-  return { score: 0, weight: DEFAULT_WEIGHTS.docsOrRepoBonus };
+  return { score: 0, neutralScore: 0, weight };
 }
 
-function adRiskScore(result: SearchResult): SignalResult {
+function adRiskScore(result: SearchResult, weights: ScoringWeights): SignalResult {
+  const weight = weights.adRisk;
   if (result.isAdOrPromoted) {
     return {
       score: 0,
-      weight: DEFAULT_WEIGHTS.adRisk,
-      reason: { code: 'ad_or_promoted', label: '推广结果', weight: DEFAULT_WEIGHTS.adRisk, confidence: 'high' },
+      neutralScore: 100,
+      weight,
+      reason: {
+        code: 'promoted_result_penalty',
+        label: '推广结果',
+        category: 'negative',
+        effect: 'decrease',
+        confidence: 'high',
+      },
     };
   }
-  return { score: 100, weight: DEFAULT_WEIGHTS.adRisk };
+  return { score: 100, neutralScore: 100, weight };
 }
 
-function thirdPartyDownloadRiskScore(result: SearchResult): SignalResult {
+function thirdPartyDownloadRiskScore(result: SearchResult, weights: ScoringWeights): SignalResult {
+  const weight = weights.thirdPartyDownloadRisk;
   if (result.detectedType === 'third_party_download_site') {
     return {
       score: 0,
-      weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk,
-      reason: { code: 'third_party_download', label: '第三方下载站谨慎', weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk, confidence: 'high' },
+      neutralScore: 100,
+      weight,
+      reason: {
+        code: 'third_party_download_penalty',
+        label: '第三方下载站谨慎',
+        category: 'negative',
+        effect: 'decrease',
+        confidence: 'high',
+      },
     };
   }
-  return { score: 100, weight: DEFAULT_WEIGHTS.thirdPartyDownloadRisk };
+  return { score: 100, neutralScore: 100, weight };
 }
 
-function seoMarketingRiskScore(result: SearchResult): SignalResult {
+function seoMarketingRiskScore(result: SearchResult, weights: ScoringWeights): SignalResult {
+  const weight = weights.seoMarketingRisk;
   // Check title and snippet for SEO / marketing patterns
   const text = `${result.title} ${result.snippet || ''}`.toLowerCase();
   const seoKeywords = ['官方下载', '免费下载', '安全下载', '高速下载', '中文版', '破解版', '绿色版'];
@@ -350,23 +460,38 @@ function seoMarketingRiskScore(result: SearchResult): SignalResult {
   if (matchCount >= 3) {
     return {
       score: 0,
-      weight: DEFAULT_WEIGHTS.seoMarketingRisk,
-      reason: { code: 'seo_marketing', label: '疑似 SEO 营销内容', weight: DEFAULT_WEIGHTS.seoMarketingRisk, confidence: 'medium' },
+      neutralScore: 100,
+      weight,
+      reason: {
+        code: 'seo_marketing_penalty',
+        label: '疑似 SEO 营销内容',
+        category: 'negative',
+        effect: 'decrease',
+        confidence: 'medium',
+      },
     };
   }
   if (matchCount >= 1) {
     return {
       score: 40,
-      weight: DEFAULT_WEIGHTS.seoMarketingRisk * 0.6,
-      reason: { code: 'seo_marketing_weak', label: '含营销关键词', weight: DEFAULT_WEIGHTS.seoMarketingRisk, confidence: 'low' },
+      neutralScore: 100,
+      weight: weight * 0.6,
+      reason: {
+        code: 'seo_marketing_penalty',
+        label: '含营销关键词',
+        category: 'negative',
+        effect: 'decrease',
+        confidence: 'low',
+      },
     };
   }
-  return { score: 100, weight: DEFAULT_WEIGHTS.seoMarketingRisk };
+  return { score: 100, neutralScore: 100, weight };
 }
 
-function suspiciousDomainRiskScore(result: SearchResult): SignalResult {
+function suspiciousDomainRiskScore(result: SearchResult, weights: ScoringWeights): SignalResult {
+  const weight = weights.suspiciousDomainRisk;
   const domain = result.domain || '';
-  if (!domain || domain === 'unknown') return { score: 100, weight: DEFAULT_WEIGHTS.suspiciousDomainRisk };
+  if (!domain || domain === 'unknown') return { score: 100, neutralScore: 100, weight };
 
   // Check for suspicious TLDs or patterns
   const suspiciousTLDs = ['.tk', '.ml', '.ga', '.cf', '.gq'];
@@ -374,8 +499,15 @@ function suspiciousDomainRiskScore(result: SearchResult): SignalResult {
   if (suspiciousTLDs.includes(tld)) {
     return {
       score: 0,
-      weight: DEFAULT_WEIGHTS.suspiciousDomainRisk,
-      reason: { code: 'suspicious_tld', label: `可疑域名后缀 ${tld}`, weight: DEFAULT_WEIGHTS.suspiciousDomainRisk, confidence: 'medium' },
+      neutralScore: 100,
+      weight,
+      reason: {
+        code: 'suspicious_domain_penalty',
+        label: `可疑域名后缀 ${tld}`,
+        category: 'negative',
+        effect: 'decrease',
+        confidence: 'medium',
+      },
     };
   }
 
@@ -384,12 +516,19 @@ function suspiciousDomainRiskScore(result: SearchResult): SignalResult {
   if (parts.length > 3) {
     return {
       score: 30,
-      weight: DEFAULT_WEIGHTS.suspiciousDomainRisk * 0.7,
-      reason: { code: 'deep_subdomain', label: '深层子域名，需谨慎', weight: DEFAULT_WEIGHTS.suspiciousDomainRisk, confidence: 'low' },
+      neutralScore: 100,
+      weight: weight * 0.7,
+      reason: {
+        code: 'suspicious_domain_penalty',
+        label: '深层子域名，需谨慎',
+        category: 'negative',
+        effect: 'decrease',
+        confidence: 'low',
+      },
     };
   }
 
-  return { score: 100, weight: DEFAULT_WEIGHTS.suspiciousDomainRisk };
+  return { score: 100, neutralScore: 100, weight };
 }
 
 // ── Main scoring function ──
@@ -415,19 +554,19 @@ export function scoreResult(
   result: SearchResult,
   ctx: ScoringContext,
 ): ScoredResult {
-  const weights = { ...DEFAULT_WEIGHTS, ...ctx.weights };
+  const weights = resolveScoringWeights(ctx.weights);
 
   // Collect all signal scores
   const signals = [
-    officialSignalScore(result, ctx.intent),
-    intentMatchScore(result, ctx.query, ctx.intent),
-    sourceTrustScore(result),
-    userPreferenceScore(result, ctx.userPreferences),
-    docsOrRepoBonusScore(result),
-    adRiskScore(result),
-    thirdPartyDownloadRiskScore(result),
-    seoMarketingRiskScore(result),
-    suspiciousDomainRiskScore(result),
+    officialSignalScore(result, ctx.intent, weights),
+    intentMatchScore(result, ctx.query, ctx.intent, weights),
+    sourceTrustScore(result, weights),
+    userPreferenceScore(result, ctx.userPreferences, weights),
+    docsOrRepoBonusScore(result, weights),
+    adRiskScore(result, weights),
+    thirdPartyDownloadRiskScore(result, weights),
+    seoMarketingRiskScore(result, weights),
+    suspiciousDomainRiskScore(result, weights),
   ];
 
   // Compute weighted total
@@ -436,26 +575,36 @@ export function scoreResult(
   const positiveWeightSum = Object.entries(weights)
     .filter(([, w]) => w > 0)
     .reduce((sum, [, w]) => sum + w, 0);
+  const normalizationWeight = positiveWeightSum || 1;
 
   let totalScore = 0;
   const reasons: ScoreReason[] = [];
 
   for (const signal of signals) {
+    let scoreImpact: number;
     if (signal.weight > 0) {
       // Positive signal: contribute proportionally
-      const contribution = signal.score * (signal.weight / positiveWeightSum);
+      const contribution = signal.score * (signal.weight / normalizationWeight);
+      const neutralContribution = signal.neutralScore * (signal.weight / normalizationWeight);
       totalScore += contribution;
+      scoreImpact = contribution - neutralContribution;
     } else {
       // Negative signal (risk penalty)
       // signal.score is 100 for "no risk", 0 for "high risk"
       // We multiply by the absolute weight / positiveWeightSum
-      const penaltyFactor = Math.abs(signal.weight) / positiveWeightSum;
+      const penaltyFactor = Math.abs(signal.weight) / normalizationWeight;
       const penalty = (100 - signal.score) * penaltyFactor;
+      const neutralPenalty = (100 - signal.neutralScore) * penaltyFactor;
       totalScore -= penalty;
+      scoreImpact = neutralPenalty - penalty;
     }
 
     if (signal.reason) {
-      reasons.push(signal.reason);
+      reasons.push({
+        ...signal.reason,
+        weight: signal.weight,
+        scoreImpact: toFiniteScoreImpact(scoreImpact),
+      });
     }
   }
 
@@ -467,13 +616,6 @@ export function scoreResult(
   if (totalScore >= 60) confidence = 'high';
   else if (totalScore >= 30) confidence = 'medium';
   else confidence = 'low';
-
-  // Special case: hidden by user → score 0
-  const domain = normalizeDomain(result.domain || '');
-  if (ctx.userPreferences[domain] === 'hide') {
-    totalScore = 0;
-    confidence = 'low';
-  }
 
   return {
     ...result,

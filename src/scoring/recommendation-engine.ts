@@ -9,10 +9,14 @@
  */
 import type { SearchResult, ConfidenceLevel, ScoreReason } from '../models/search-result';
 import { scoreResult, detectIntent, type ScoringContext, type ScoredResult } from './scoring-engine';
-import { normalizeDomain } from '../utils/domain';
+import {
+  evaluateTrustPolicy,
+  type TrustPolicyDecision,
+  type TrustPolicyPreferences,
+} from './trust-policy';
 
 /** Flat domain → action map as used by content script and storage */
-export type DomainPrefMap = Record<string, 'promote' | 'demote' | 'hide'>;
+export type DomainPrefMap = TrustPolicyPreferences;
 
 // ── Types ──
 
@@ -25,6 +29,13 @@ export interface RecommendationOutput {
   intent: ReturnType<typeof detectIntent>;
   /** Whether any results were hidden by user preference */
   hasHiddenResults: boolean;
+  /** Results excluded by deterministic local policy */
+  excluded: ExcludedRecommendation[];
+}
+
+export interface ExcludedRecommendation {
+  result: SearchResult;
+  decision: Extract<TrustPolicyDecision, { action: 'exclude' }>;
 }
 
 // ── Main recommendation function ──
@@ -41,10 +52,10 @@ export interface RecommendationOptions {
  * Run the full scoring + ranking pipeline.
  *
  * 1. Detect search intent from query
- * 2. Score each result
- * 3. Filter out hidden results
+ * 2. Apply deterministic Trust Policy Gate
+ * 3. Soft-score allowed results
  * 4. Sort by score descending
- * 5. Return top N
+ * 5. Return top N and structured exclusions
  */
 export function getRecommendations(options: RecommendationOptions): RecommendationOutput {
   const {
@@ -61,20 +72,19 @@ export function getRecommendations(options: RecommendationOptions): Recommendati
 
   const ctx: ScoringContext = { query, intent, userPreferences: userPrefs, weights };
 
-  // Score all results
-  const scored: ScoredResult[] = results.map(r => scoreResult(r, ctx));
+  const allowed: SearchResult[] = [];
+  const excluded: ExcludedRecommendation[] = [];
 
-  // Separate hidden results
-  const hidden = scored.filter(r => {
-    const d = normalizeDomain(r.domain ?? '');
-    return d ? userPrefs[d] === 'hide' : false;
-  });
+  for (const result of results) {
+    const decision = evaluateTrustPolicy(result, userPrefs);
+    if (decision.action === 'exclude') {
+      excluded.push({ result, decision });
+    } else {
+      allowed.push(result);
+    }
+  }
 
-  // Filtered (exclude hidden)
-  const visible = scored.filter(r => {
-    const d = normalizeDomain(r.domain ?? '');
-    return !(d && userPrefs[d] === 'hide');
-  });
+  const visible: ScoredResult[] = allowed.map(result => scoreResult(result, ctx));
 
   // Sort by score descending, then by originalRank as tiebreaker
   visible.sort((a, b) => {
@@ -86,7 +96,8 @@ export function getRecommendations(options: RecommendationOptions): Recommendati
     all: visible,
     top: visible.slice(0, limit),
     intent,
-    hasHiddenResults: hidden.length > 0,
+    hasHiddenResults: excluded.some(item => item.decision.reason.code === 'explicit_user_hide'),
+    excluded,
   };
 }
 
@@ -107,6 +118,27 @@ export interface RecommendationDisplayItem {
   isAd: boolean;
   reasons: ScoreReason[];
   topReason: string;       // short human-readable primary reason
+}
+
+export interface CompactSourceTag {
+  label: string;
+  className: string;
+}
+
+export function getCompactSourceTag(reasons: ScoreReason[]): CompactSourceTag | undefined {
+  const reasonCodes = new Set(reasons.map(reason => reason.code));
+
+  if (reasonCodes.has('official_domain_match')) {
+    return { label: '官网', className: 'tag-official' };
+  }
+  if (reasonCodes.has('official_domain_partial')) {
+    return { label: '官方来源', className: 'tag-official' };
+  }
+  if (reasonCodes.has('trusted_source') || reasonCodes.has('high_trust_domain')) {
+    return { label: '可信来源', className: 'tag-trusted' };
+  }
+
+  return undefined;
 }
 
 /**
@@ -188,13 +220,21 @@ function getResultTypeLabel(type: string): string {
 
 function getTopReason(reasons: ScoreReason[]): string {
   if (reasons.length === 0) return '';
-  // Return the reason with the highest absolute weight, preferring positive
-  const positive = reasons.filter(r => r.weight > 0);
-  if (positive.length > 0) {
-    positive.sort((a, b) => b.weight - a.weight);
-    return positive[0].label;
+
+  const policyReason = reasons.find(reason => reason.category === 'policy');
+  if (policyReason) return policyReason.label;
+
+  let topReason = reasons[0];
+  let topImpact = Number.isFinite(topReason.scoreImpact) ? Math.abs(topReason.scoreImpact) : 0;
+
+  for (let index = 1; index < reasons.length; index += 1) {
+    const reason = reasons[index];
+    const impact = Number.isFinite(reason.scoreImpact) ? Math.abs(reason.scoreImpact) : 0;
+    if (impact > topImpact) {
+      topReason = reason;
+      topImpact = impact;
+    }
   }
-  // If all negative, return the most impactful negative reason
-  const sorted = [...reasons].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
-  return sorted[0].label;
+
+  return topReason.label;
 }

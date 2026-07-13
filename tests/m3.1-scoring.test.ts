@@ -18,6 +18,7 @@
 import assert from 'node:assert/strict';
 import { scoreResult, detectIntent } from '../src/scoring/scoring-engine';
 import { getRecommendations } from '../src/scoring/recommendation-engine';
+import { evaluateTrustPolicy } from '../src/scoring/trust-policy';
 import type { SearchResult } from '../src/models/search-result';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   const scored = scoreResult(result, ctx);
 
   assert.ok(scored.score <= 40, `ad result should score ≤40, got ${scored.score}`);
-  assert.ok(scored.reasons.some(r => r.code === 'ad_or_promoted'), 'reason includes ad_or_promoted');
+  assert.ok(scored.reasons.some(r => r.code === 'promoted_result_penalty'), 'reason includes promoted penalty');
 
   console.log(`  Test 3 OK — ad penalised score: ${scored.score}, confidence: ${scored.confidence}`);
 }
@@ -108,21 +109,16 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   console.log('  Test 4 OK — all intent patterns match correctly');
 }
 
-// ─── Test 5: User "hide" preference zeroes score ─────────────────────────
+// ─── Test 5: User "hide" preference is a policy exclusion ────────────────
 
 {
   const result = makeResult({ domain: 'bad.example.com', displayUrl: 'bad.example.com' });
-  const ctx = {
-    query: 'test',
-    intent: 'general' as const,
-    userPreferences: { 'bad.example.com': 'hide' as const },
-  };
-  const scored = scoreResult(result, ctx);
+  const decision = evaluateTrustPolicy(result, { 'bad.example.com': 'hide' });
 
-  assert.equal(scored.score, 0, 'hidden result should have score 0');
-  assert.equal(scored.confidence, 'low', 'hidden result should be low confidence');
+  assert.equal(decision.action, 'exclude', 'hidden result should be excluded before scoring');
+  assert.equal(decision.action === 'exclude' && decision.reason.code, 'explicit_user_hide');
 
-  console.log('  Test 5 OK — hidden result score: 0');
+  console.log('  Test 5 OK — hidden result excluded by policy');
 }
 
 // ─── Test 6: User "promote" preference boosts score ──────────────────────
@@ -195,7 +191,7 @@ console.log('  Test 8 OK — limit respected: top 2 of 4');
     userPreferences: {},
   });
 
-  assert.ok(scored.reasons.some(r => r.code === 'third_party_download'), 'third-party warning reason is present');
+  assert.ok(scored.reasons.some(r => r.code === 'third_party_download_penalty'), 'third-party warning reason is present');
   assert.ok(scored.score < 60, `third-party download site should not be high confidence, got ${scored.score}`);
 
   console.log(`  Test 9 OK — third-party download score: ${scored.score}`);
@@ -213,7 +209,7 @@ console.log('  Test 8 OK — limit respected: top 2 of 4');
   });
 
   assert.ok(demoted.score < neutral.score, `demoted score ${demoted.score} < neutral score ${neutral.score}`);
-  assert.ok(demoted.reasons.some(r => r.code === 'user_demoted'), 'reason includes user_demoted');
+  assert.ok(demoted.reasons.some(r => r.code === 'user_preference_lower'), 'reason includes user preference lower');
 
   console.log(`  Test 10 OK — neutral: ${neutral.score}, demoted: ${demoted.score}`);
 }
