@@ -11,13 +11,27 @@ import type { SearchLensSettings } from "../../src/storage/chrome-local-storage-
 import { normalizeDomain } from "../../src/utils/domain";
 
 const RESULT_CONTAINER_SELECTOR = "div.c-container, div.ec_result, div.ec_wise_ad, div.result-op";
+const MUTATION_SETTLE_MS = 120;
+const MUTATION_MAX_MS = 1000;
+
+type SearchLensRuntimeDocument = Document & {
+  __searchlensBaiduRuntime?: { active: true };
+};
+
+interface PreferenceSnapshot {
+  failed: boolean;
+  prefs?: DomainPrefMap;
+  settings?: Partial<SearchLensSettings>;
+}
 
 export default defineContentScript({
   matches: ["https://www.baidu.com/s*", "https://baidu.com/s*"],
   runAt: "document_idle",
 
   main() {
-    if (!isWebSearchTab()) return;
+    const runtimeDocument = document as SearchLensRuntimeDocument;
+    if (runtimeDocument.__searchlensBaiduRuntime?.active) return;
+    runtimeDocument.__searchlensBaiduRuntime = { active: true };
 
     let panel: HTMLDivElement | null = null;
     let lastOutput: ScoredAdapterOutput | null = null;
@@ -29,7 +43,9 @@ export default defineContentScript({
     let warnThirdPartyDownloadSites = true;
     let dismissed = false;
     let domSettleTimer: number | undefined;
+    let domMaxTimer: number | undefined;
     let toastTimer: number | undefined;
+    let refreshGeneration = 0;
 
     function isWebSearchTab(): boolean {
       const activeTab = document.querySelector("#s_tab .cur, .s_tab .cur");
@@ -38,32 +54,40 @@ export default defineContentScript({
       return text === "" || text === "网页";
     }
 
-    async function loadPreferences(): Promise<boolean> {
-      let failed = false;
+    async function readPreferences(): Promise<PreferenceSnapshot> {
+      const snapshot: PreferenceSnapshot = { failed: false };
 
       try {
         const prefs = await browser.runtime.sendMessage({ type: "GET_DOMAIN_PREFERENCES" });
-        if (prefs && typeof prefs === "object") domainPrefs = prefs as DomainPrefMap;
+        if (prefs && typeof prefs === "object") snapshot.prefs = prefs as DomainPrefMap;
       } catch (err) {
-        failed = true;
+        snapshot.failed = true;
         console.warn("[SearchLens] Failed to load domain preferences:", err);
       }
 
       try {
         const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" }) as Partial<SearchLensSettings>;
-        enabled = settings?.enabled !== false;
-        if (typeof settings?.recommendationLimit === "number") recommendationLimit = settings.recommendationLimit;
-        if (typeof settings?.showConfidence === "boolean") showConfidence = settings.showConfidence;
-        if (typeof settings?.showReasons === "boolean") showReasons = settings.showReasons;
-        if (typeof settings?.warnThirdPartyDownloadSites === "boolean") {
-          warnThirdPartyDownloadSites = settings.warnThirdPartyDownloadSites;
-        }
+        snapshot.settings = settings;
       } catch (err) {
-        failed = true;
+        snapshot.failed = true;
         console.warn("[SearchLens] Failed to load settings:", err);
       }
 
-      return failed;
+      return snapshot;
+    }
+
+    function applyPreferences(snapshot: PreferenceSnapshot): void {
+      if (snapshot.prefs) domainPrefs = snapshot.prefs;
+
+      const settings = snapshot.settings;
+      if (!settings) return;
+      enabled = settings.enabled !== false;
+      if (typeof settings.recommendationLimit === "number") recommendationLimit = settings.recommendationLimit;
+      if (typeof settings.showConfidence === "boolean") showConfidence = settings.showConfidence;
+      if (typeof settings.showReasons === "boolean") showReasons = settings.showReasons;
+      if (typeof settings.warnThirdPartyDownloadSites === "boolean") {
+        warnThirdPartyDownloadSites = settings.warnThirdPartyDownloadSites;
+      }
     }
 
     function waitForStableDom(callback: () => void, settleMs = 800, maxMs = 4000): void {
@@ -127,6 +151,8 @@ export default defineContentScript({
 
       container.querySelector(".searchlens-close-btn")?.addEventListener("click", () => {
         dismissed = true;
+        refreshGeneration += 1;
+        clearScheduledRefresh();
         removePanel();
       });
       container.querySelector(".searchlens-settings-btn")?.addEventListener("click", () => {
@@ -160,10 +186,19 @@ export default defineContentScript({
     }
 
     function insertPanel(): boolean {
-      if (panel || dismissed) return panel !== null;
+      if (dismissed) return false;
+      if (panel && document.contains(panel)) return true;
+
       const contentLeft = document.getElementById("content_left");
       if (!contentLeft) return false;
 
+      const existingPanel = document.querySelector<HTMLDivElement>("#searchlens-panel");
+      if (existingPanel) {
+        panel = existingPanel;
+        return true;
+      }
+
+      panel = null;
       panel = createPanel();
       contentLeft.insertBefore(panel, contentLeft.firstChild);
       return true;
@@ -441,21 +476,28 @@ export default defineContentScript({
     }
 
     async function refreshFromPage(showLoading = false): Promise<void> {
+      const generation = ++refreshGeneration;
+
       if (dismissed || !isWebSearchTab()) {
         removePanel();
         return;
       }
 
-      const storageFailed = await loadPreferences();
-      if (!enabled || dismissed) {
+      const preferences = await readPreferences();
+      if (generation !== refreshGeneration) return;
+      applyPreferences(preferences);
+
+      if (!enabled || dismissed || !isWebSearchTab()) {
         removePanel();
         return;
       }
 
       if (!insertPanel()) return;
+      if (generation !== refreshGeneration) return;
       if (showLoading) renderLoading();
 
       const output = runScoredAdapter(document, domainPrefs, recommendationLimit);
+      if (generation !== refreshGeneration) return;
       lastOutput = output;
       logDiagnostics(output);
 
@@ -465,7 +507,9 @@ export default defineContentScript({
       }
 
       renderPanel();
-      if (storageFailed) showToast("部分本地设置读取失败，本次使用默认值。", "error");
+      if (preferences.failed && generation === refreshGeneration) {
+        showToast("部分本地设置读取失败，本次使用默认值。", "error");
+      }
     }
 
     function escapeHtml(value: string): string {
@@ -477,15 +521,29 @@ export default defineContentScript({
         .replace(/'/g, "&#39;");
     }
 
-    void loadPreferences().then(() => {
-      if (!enabled || dismissed || !isWebSearchTab()) return;
-      if (insertPanel()) renderLoading();
-      waitForStableDom(() => { void refreshFromPage(); });
+    const bootstrapGeneration = ++refreshGeneration;
+    const bootstrapIsCurrent = (): boolean => bootstrapGeneration === refreshGeneration;
+    void readPreferences().then((preferences) => {
+      if (!bootstrapIsCurrent()) return;
+      applyPreferences(preferences);
+      if (!bootstrapIsCurrent() || !enabled || dismissed || !isWebSearchTab()) return;
+      if (!insertPanel() || !bootstrapIsCurrent()) return;
+      renderLoading();
+      if (!bootstrapIsCurrent()) return;
+      waitForStableDom(() => {
+        if (!bootstrapIsCurrent()) return;
+        void refreshFromPage();
+      });
     });
 
     const tabObserver = new MutationObserver(() => {
-      if (!isWebSearchTab()) removePanel();
-      else if (!panel && !dismissed) void refreshFromPage(true);
+      if (!isWebSearchTab()) {
+        refreshGeneration += 1;
+        clearScheduledRefresh();
+        removePanel();
+      } else if (!panel && !dismissed) {
+        scheduleRefresh(true);
+      }
     });
     const tabBar = document.querySelector("#s_tab, .s_tab");
     if (tabBar) {
@@ -499,25 +557,78 @@ export default defineContentScript({
 
     let observedContentLeft: HTMLElement | null = null;
     let contentObserver: MutationObserver | null = null;
+    let observedSearchInput: HTMLInputElement | null = null;
 
-    function scheduleRefresh(): void {
-      if (dismissed) return;
+    function clearScheduledRefresh(): void {
       if (domSettleTimer) clearTimeout(domSettleTimer);
+      if (domMaxTimer) clearTimeout(domMaxTimer);
+      domSettleTimer = undefined;
+      domMaxTimer = undefined;
+    }
+
+    function runScheduledRefresh(showLoading: boolean): void {
+      clearScheduledRefresh();
+      void refreshFromPage(showLoading);
+    }
+
+    function scheduleRefresh(showLoading = false): void {
+      if (dismissed) return;
+      refreshGeneration += 1;
+      if (domSettleTimer) clearTimeout(domSettleTimer);
+      if (!domMaxTimer) {
+        domMaxTimer = window.setTimeout(() => {
+          runScheduledRefresh(showLoading);
+        }, MUTATION_MAX_MS);
+      }
       domSettleTimer = window.setTimeout(() => {
-        domSettleTimer = undefined;
-        void refreshFromPage();
-      }, 600);
+        runScheduledRefresh(showLoading);
+      }, MUTATION_SETTLE_MS);
+    }
+
+    function isSearchLensNode(node: Node): boolean {
+      let element = node instanceof Element ? node : node.parentElement;
+      while (element) {
+        const className = typeof element.className === "string" ? element.className : "";
+        if (element.id === "searchlens-panel" ||
+          element.matches('[data-searchlens-root="true"]') ||
+          className.split(/\s+/).some(name => name.startsWith("searchlens-"))) {
+          return true;
+        }
+        element = element.parentElement;
+      }
+      return false;
     }
 
     function mutationOnlyTouchesSearchLens(records: MutationRecord[]): boolean {
-      const nodes = records.flatMap(record => [...record.addedNodes, ...record.removedNodes]);
-      return nodes.length > 0 && nodes.every(node => {
-        if (!(node instanceof Element)) return false;
-        return node.id === "searchlens-panel" || node.matches('[data-searchlens-root="true"]');
+      return records.length > 0 && records.every(record => {
+        if (isSearchLensNode(record.target)) return true;
+
+        const elementNodes = [...record.addedNodes, ...record.removedNodes]
+          .filter((node): node is Element => node instanceof Element);
+        if (elementNodes.length === 0) {
+          return record.type === "childList" && record.target === observedContentLeft;
+        }
+        return elementNodes.length > 0 && elementNodes.every(isSearchLensNode);
       });
     }
 
-    function observeContentLeft(): void {
+    function observeSearchInput(): void {
+      const currentInput = document.querySelector<HTMLInputElement>("#kw");
+      if (currentInput === observedSearchInput) return;
+
+      observedSearchInput?.removeEventListener("input", handleQueryInput);
+      observedSearchInput?.removeEventListener("change", handleQueryInput);
+      observedSearchInput = currentInput;
+      observedSearchInput?.addEventListener("input", handleQueryInput);
+      observedSearchInput?.addEventListener("change", handleQueryInput);
+    }
+
+    function handleQueryInput(): void {
+      if (!isWebSearchTab()) return;
+      scheduleRefresh(true);
+    }
+
+    function observeContentLeft(refreshOnChange = false): void {
       const currentContentLeft = document.getElementById("content_left");
       if (currentContentLeft === observedContentLeft) return;
 
@@ -531,11 +642,22 @@ export default defineContentScript({
         if (panel && !document.contains(panel)) panel = null;
         scheduleRefresh();
       });
-      contentObserver.observe(currentContentLeft, { childList: true, subtree: false });
+      contentObserver.observe(currentContentLeft, {
+        attributes: true,
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+
+      if (refreshOnChange && !dismissed && isWebSearchTab()) scheduleRefresh(true);
     }
 
+    observeSearchInput();
     observeContentLeft();
-    new MutationObserver(observeContentLeft).observe(document.documentElement, {
+    new MutationObserver(() => {
+      observeSearchInput();
+      observeContentLeft(true);
+    }).observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
