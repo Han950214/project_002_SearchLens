@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SearchLens Local Preferences</title>
+  <link rel="stylesheet" href="../../../entrypoints/options/style.css">
+  <style>
+    html, body { width: 1280px; height: 800px; overflow: hidden; }
+    .options-shell { width: 980px; padding-top: 28px; }
+    .options-header { margin-bottom: 18px; }
+    .options-body { grid-template-columns: .9fr 1.3fr; align-items: start; }
+    .options-section { margin: 0; }
+    .local-card { grid-row: span 2; }
+    .privacy-section { min-height: 178px; }
+  </style>
+</head>
+<body>
+  <div class="options-shell">
+    <header class="options-header"><div class="brand-mark">SL</div><div><p class="eyebrow">SEARCHLENS CN · 本地设置</p><h1>搜索结果辅助设置</h1><p>管理推荐显示与本地域名偏好。所有设置仅保存在当前浏览器中。</p></div></header>
+    <main class="options-body">
+      <section class="options-section">
+        <div class="section-heading"><div><p class="section-kicker">显示</p><h2>推荐面板</h2></div></div>
+        <div class="option-row"><label class="option-label"><span class="option-title">启用 SearchLens</span><span class="option-desc">在百度网页搜索页显示独立推荐面板</span></label><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+        <div class="option-row"><label class="option-label"><span class="option-title">显示评分理由</span><span class="option-desc">说明官网特征、推广和用户偏好等信号</span></label><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </section>
+      <section class="options-section local-card">
+        <div class="section-heading section-heading-actions"><div><p class="section-kicker">本地规则</p><h2>域名偏好</h2><p class="section-desc">3 个域名规则。隐藏优先排除，提升和降低会影响推荐顺序。</p></div><button class="options-btn options-btn-danger">清空域名偏好</button></div>
+        <div class="domain-groups">
+          <section class="domain-group action-promote"><div class="domain-group-heading"><div><h3>已提升</h3><p>优先提高推荐顺序</p></div><span>1</span></div><div class="domain-group-list"><div class="domain-pref-item"><span class="domain-pref-domain">python.org</span><button class="domain-pref-remove-btn">移除</button></div></div></section>
+          <section class="domain-group action-demote"><div class="domain-group-heading"><div><h3>已降低</h3><p>在同类结果中降低顺序</p></div><span>1</span></div><div class="domain-group-list"><div class="domain-pref-item"><span class="domain-pref-domain">example-download.test</span><button class="domain-pref-remove-btn">移除</button></div></div></section>
+          <section class="domain-group action-hide"><div class="domain-group-heading"><div><h3>已隐藏</h3><p>从推荐结果中优先排除</p></div><span>1</span></div><div class="domain-group-list"><div class="domain-pref-item"><span class="domain-pref-domain">unwanted.example</span><button class="domain-pref-remove-btn">移除</button></div></div></section>
+        </div>
+      </section>
+      <section class="options-section privacy-section"><div class="section-heading"><div><p class="section-kicker">隐私</p><h2>默认本地处理</h2></div></div><p>SearchLens 不收集或上传搜索词、搜索结果、点击记录、完整浏览历史或域名偏好。</p><p>可信度仅用于辅助判断，请继续核对原始搜索结果与真实网站域名。</p></section>
+    </main>
+  </div>
+</body>
+</html>

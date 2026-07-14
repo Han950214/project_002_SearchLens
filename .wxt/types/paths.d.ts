@@ -4,8 +4,13 @@ import "wxt/browser";
 declare module "wxt/browser" {
   export type PublicPath =
     | "/"
+    | "/THIRD_PARTY_NOTICES.txt"
     | "/background.js"
     | "/content-scripts/baidu.js"
+    | "/icons/searchlens-128.png"
+    | "/icons/searchlens-16.png"
+    | "/icons/searchlens-32.png"
+    | "/icons/searchlens-48.png"
     | "/options.html"
     | "/popup.html"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SearchLens Store Screenshot</title>
+  <link rel="stylesheet" href="../../../entrypoints/baidu.content/style.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 1280px; height: 800px; margin: 0; overflow: hidden; }
+    body { color: #1f2937; background: #f7f8fb; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+    .top { height: 112px; padding: 28px 64px 20px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+    .search-row { display: flex; align-items: center; gap: 14px; width: 780px; }
+    .neutral-mark { width: 42px; height: 42px; border-radius: 12px; background: #e8ebf2; }
+    .query { flex: 1; height: 46px; padding: 11px 18px; border: 1px solid #cfd5e1; border-radius: 12px; background: #fff; font-size: 17px; }
+    .search-btn { height: 46px; padding: 0 24px; border: 0; border-radius: 10px; color: #fff; background: #4f46e5; font-weight: 650; }
+    .tabs { margin: 15px 0 0 57px; color: #667085; font-size: 13px; word-spacing: 22px; }
+    .tabs strong { color: #4f46e5; }
+    .layout { display: grid; grid-template-columns: 820px 1fr; gap: 42px; padding: 20px 64px 0; }
+    #content_left { width: 820px; }
+    .result { margin: 0 0 14px; padding: 14px 18px; border: 1px solid #e4e7ee; border-radius: 10px; background: #fff; }
+    .result h2 { margin: 0 0 5px; color: #27469c; font-size: 16px; }
+    .result p { margin: 0; color: #667085; font-size: 12px; }
+    .result .domain { color: #2f7a57; font-weight: 650; }
+    .aside { padding: 22px; border-radius: 14px; background: linear-gradient(155deg, #eef2ff, #f0fdfa); }
+    .aside small { color: #6366f1; font-weight: 750; letter-spacing: .08em; }
+    .aside h1 { margin: 10px 0 8px; font-size: 25px; }
+    .aside p { margin: 0; color: #667085; line-height: 1.8; }
+    .screen-two .searchlens-details { display: block; }
+    .screen-two .searchlens-detail-toggle { color: #4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="search-row"><span class="neutral-mark" aria-hidden="true"></span><div class="query">Python download</div><button class="search-btn">搜索</button></div>
+    <div class="tabs"><strong>网页</strong> 图片 资讯 视频</div>
+  </div>
+  <div class="layout">
+    <main id="content_left">
+      <section id="searchlens-panel" class="searchlens-panel" data-searchlens-root="true">
+        <header class="searchlens-header">
+          <div class="searchlens-brand"><span class="searchlens-brand-mark">SL</span><div><strong>SearchLens</strong><small>独立的搜索结果辅助工具</small></div></div>
+          <div class="searchlens-header-actions"><button class="searchlens-icon-btn">设置</button><button class="searchlens-icon-btn searchlens-close-btn">×</button></div>
+        </header>
+        <div class="searchlens-summary"><span>当前搜索：<strong class="searchlens-query">Python download</strong></span><span class="searchlens-summary-divider"></span><span class="searchlens-rec-count">推荐 3 条</span></div>
+        <div class="searchlens-body" id="searchlens-body">
+          <div class="searchlens-list">
+            <article class="searchlens-card">
+              <div class="searchlens-rank">1</div>
+              <div class="searchlens-card-main">
+                <div class="searchlens-title-row"><h3 class="searchlens-title"><a href="#">Download Python</a></h3><span class="searchlens-inline-domain">python.org</span><div class="searchlens-score"><strong>93</strong><span>可信度参考</span></div></div>
+                <div class="searchlens-tags"><span class="searchlens-type-tag tag-official">官网特征</span><span class="searchlens-type-tag tag-trusted">可信来源</span></div>
+                <div class="searchlens-actions"><div class="searchlens-pref-actions"><button class="searchlens-pref-btn action-promote">提升</button><button class="searchlens-pref-btn action-demote">降低</button><button class="searchlens-pref-btn action-hide">隐藏</button></div><button class="searchlens-detail-toggle">查看原因</button></div>
+                <dl class="searchlens-details" hidden><div class="searchlens-detail-row"><dt>主要原因</dt><dd>查询实体与官网域名一致</dd></div><div class="searchlens-detail-row"><dt>规则命中</dt><dd class="searchlens-rule-list"><span>实体官网匹配</span><span>下载意图匹配</span></dd></div><div class="searchlens-detail-row"><dt>参考等级</dt><dd>较高</dd></div><div class="searchlens-detail-row"><dt>百度原始排名</dt><dd>第 2 位</dd></div><div class="searchlens-detail-row"><dt>用户偏好</dt><dd>未设置</dd></div></dl>
+              </div>
+            </article>
+            <article class="searchlens-card">
+              <div class="searchlens-rank">2</div>
+              <div class="searchlens-card-main">
+                <div class="searchlens-title-row"><h3 class="searchlens-title"><a href="#">Python Documentation</a></h3><span class="searchlens-inline-domain">docs.python.org</span><div class="searchlens-score"><strong>86</strong><span>可信度参考</span></div></div>
+                <div class="searchlens-tags"><span class="searchlens-type-tag tag-trusted">可信来源</span></div>
+                <div class="searchlens-actions"><div class="searchlens-pref-actions"><button class="searchlens-pref-btn action-promote">提升</button><button class="searchlens-pref-btn action-demote">降低</button><button class="searchlens-pref-btn action-hide">隐藏</button></div><button class="searchlens-detail-toggle">查看原因</button></div>
+              </div>
+            </article>
+          </div>
+          <div class="searchlens-footer"><span>已分析 3 条 · 可信度仅用于辅助判断</span><button class="searchlens-text-settings-btn">管理全部偏好</button></div>
+        </div>
+      </section>
+      <article class="result"><h2>Python downloads and resources</h2><p><span class="domain">python.org</span> · 公开搜索结果示例，用于展示当前扩展界面。</p></article>
+      <article class="result"><h2>Python documentation</h2><p><span class="domain">docs.python.org</span> · 百度原始结果仍保持可用。</p></article>
+    </main>
+    <aside class="aside"><small>SEARCHLENS CN</small><h1 id="aside-title">可信度参考与推荐排序</h1><p id="aside-copy">在当前搜索页本地分析公开结果。保留原始结果，辅助核对域名和来源。</p></aside>
+  </div>
+  <script>
+    if (location.hash === '#reasons') {
+      document.body.classList.add('screen-two');
+      document.querySelector('.searchlens-details').hidden = false;
+      document.querySelector('.searchlens-detail-toggle').textContent = '收起原因';
+      document.getElementById('aside-title').textContent = '评分原因与来源说明';
+      document.getElementById('aside-copy').textContent = '展开查看本地规则命中、参考等级、原始排名与用户偏好。';
+    }
+  </script>
+</body>
+</html>

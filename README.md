@@ -32,3 +32,7 @@ v0.4-C 百度动态页面回归可单独运行 `npm run test:v0.4-c`；发布前
 ## 数据与边界
 
 当前版本默认本地处理，不使用 AI，不上传或出售搜索词、浏览记录、点击记录和域名偏好；不包含账号、云同步、统计上传、付费系统、多搜索引擎或 dashboard。详情见 [合规边界](docs/compliance.md)、[v0.3 产品面板架构](docs/product-panel-v0.3.md) 与 [v0.4 Trust Ranking 架构](docs/trust-ranking-v0.4.md)。
+
+## Chrome Web Store 发布准备
+
+发布准备材料位于 `docs/release/`，原创商店素材位于 `assets/release/`，扩展图标位于 `public/icons/`。当前发布前仍需开发者提供并核验公开支持邮箱、开发者名称和隐私政策公网 URL；这些用户输入完成前不提升版本号，也不生成最终商店 ZIP。

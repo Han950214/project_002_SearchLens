@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">SearchLens original lens mark</title>
+  <rect x="16" y="16" width="96" height="96" rx="24" fill="#4f46e5"/>
+  <circle cx="58" cy="56" r="25" fill="none" stroke="#ffffff" stroke-width="9"/>
+  <path d="M77 75 L94 92" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="49" cy="47" r="7" fill="#5eead4"/>
+  <text x="58" y="64" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="19" font-weight="700" fill="#ffffff">SL</text>
+</svg>
