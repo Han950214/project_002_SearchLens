@@ -1,5 +1,6 @@
 param(
-  [string]$ChromePath = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+  [string]$ChromePath = 'C:\Program Files\Google\Chrome\Application\chrome.exe',
+  [switch]$EdgeLogoOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,7 +10,8 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $publicIcons = Join-Path $projectRoot 'public\icons'
 $screenshots = Join-Path $projectRoot 'assets\release\screenshots'
 $promo = Join-Path $projectRoot 'assets\release\promo'
-New-Item -ItemType Directory -Force -Path $publicIcons, $screenshots, $promo | Out-Null
+$edge = Join-Path $projectRoot 'assets\release\edge'
+New-Item -ItemType Directory -Force -Path $publicIcons, $screenshots, $promo, $edge | Out-Null
 
 function New-RoundedRectanglePath {
   param([float]$X, [float]$Y, [float]$Width, [float]$Height, [float]$Radius)
@@ -63,6 +65,11 @@ function New-SearchLensIcon {
   $backgroundPath.Dispose()
   $graphics.Dispose()
   $bitmap.Dispose()
+}
+
+New-SearchLensIcon -Size 300 -OutputPath (Join-Path $edge 'searchlens-edge-logo-300x300.png')
+if ($EdgeLogoOnly) {
+  return
 }
 
 foreach ($size in 16, 32, 48, 128) {
