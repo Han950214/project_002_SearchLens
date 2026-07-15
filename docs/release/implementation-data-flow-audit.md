@@ -35,7 +35,7 @@ content script 只在百度“网页”搜索结果路径运行。它读取：
 
 ## 网络、共享与远程代码
 
-- 扩展运行时源代码（`entrypoints/`、`src/`、`wxt.config.ts`）中没有 `fetch`、`XMLHttpRequest`、`WebSocket`、`sendBeacon`、analytics、telemetry、crash reporting、远程配置、动态远程 import、外部脚本、外部字体、外部图片或 CDN。`assets/release/source/verify-package-smoke.mjs` 仅作为发布验证工具，通过本机 WebSocket 连接隔离 Chrome 的 DevTools Protocol，并使用 CDP `Fetch` 域提供受控测试页面；该脚本及其通信不进入扩展构建或发布包。
+- 扩展运行时源代码（`entrypoints/`、`src/`、`wxt.config.ts`）中没有 `fetch`、`XMLHttpRequest`、`WebSocket`、`sendBeacon`、analytics、telemetry、crash reporting、远程配置、动态远程 import、外部脚本、外部字体、外部图片或 CDN。`assets/release/source/verify-package-smoke.mjs` 仅作为发布验证工具，使用 Puppeteer 与其 bundled Chrome for Testing，在 Windows TEMP 隔离 Profile 中通过 `pipe: true` 和 `enableExtensions: [extensionPath]` 加载当前构建，并访问真实公开百度搜索页验证扩展加载、单实例、面板、query、推荐、options 与错误状态；它不开放 TCP CDP 调试端口，不使用 WebSocket CDP 连接或 CDP `Fetch` 页面拦截，不访问用户现有 Chrome Profile，临时 Puppeteer、Chrome for Testing 与 Profile 均位于 TEMP，且该脚本及其临时通信不进入扩展构建或发布 ZIP，也不改变扩展无网络端点、无远程代码、无 analytics 的运行时结论。
 - 构建 chunk 中的 `fetch(m.href)` 是 WXT/Vite 的 modulepreload helper，仅加载扩展包内同源模块；没有固定外部 endpoint。
 - 推荐标题链接来自当前页面公开结果。只有用户主动点击时才由 Chrome 进行普通页面导航；SearchLens 不拦截、不记录、不上传该点击。
 - 无账号、远程服务器、第三方共享、数据出售或人工读取通道。
