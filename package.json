@@ -19,7 +19,8 @@
     "test:all": "npm test && npm run test:m3 && npm run test:v0.4 && npm run test:v0.4-b && npm run test:v0.4-c && npm run test:extractor && npm run test:storage",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "release:package-smoke": "node assets/release/source/verify-package-smoke.mjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.32",

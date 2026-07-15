@@ -1,11 +1,24 @@
-# Chrome Web Store 用户输入清单
+# 已确认发布者信息与用户操作
 
-状态：`release_ready=no`。以下信息不能由 Codex 编造，且完成前不得提升版本号或生成最终发布 ZIP。
+更新日期：2026-07-15
 
-| 内部令牌 | 必须由用户提供并核验的内容 | 使用位置 |
+## 已确认信息
+
+| 项目 | 值 | 状态 |
 | --- | --- | --- |
-| `USER_INPUT_REQUIRED_SUPPORT_EMAIL` | 可公开接收支持请求的邮箱 | 隐私政策、商店支持信息、开发者账号联系信息 |
-| `USER_INPUT_REQUIRED_PRIVACY_POLICY_URL` | 可公网访问、内容与仓库 `PRIVACY.md` 一致的 HTTPS URL | Developer Dashboard Privacy practices |
-| `USER_INPUT_REQUIRED_DEVELOPER_NAME` | 有权发布本扩展的个人或组织公开名称 | 商店开发者身份与隐私政策署名 |
+| 公开开发者名称 | SearchLens | 已确认 |
+| 公开支持邮箱 | `826124445@qq.com` | 已确认 |
+| 隐私政策目标 URL | `https://han950214.github.io/project_002_SearchLens/privacy/` | 仓库页面已准备；尚未公开核验 |
+| GitHub 仓库 | `Han950214/project_002_SearchLens` | 本地 origin 已核对 |
+| GitHub Pages 来源 | Deploy from branch → `main` → `/docs` | 待用户操作 |
 
-用户还需亲自完成：注册/维护开发者账号、接受 Developer Agreement、设置 2-Step Verification、选择发布国家/地区和可见范围、填写后台字段、上传 ZIP、提交审核、选择自动或 deferred publishing。Codex 不登录、不代填、不提交。
+## USER ACTION REQUIRED
+
+- 将本地提交 push 到远端；Codex 不执行 push。
+- 在 GitHub Settings → Pages 选择 Deploy from branch、`main`、`/docs` 并保存。
+- 等待部署完成后，在未登录窗口核验目标 URL 可直接访问且内容与 `PRIVACY.md` 一致。
+- 维护 Chrome Web Store 开发者账号、2-Step Verification，并接受 Developer Agreement。
+- 在 Developer Dashboard 填写 Listing、Privacy practices、Limited Use、Distribution、支持信息和隐私政策 URL。
+- 上传已验证 ZIP、填写测试说明、提交审核并决定 deferred publishing。
+
+Codex 不登录 GitHub 或 Chrome Web Store，不更改 Pages 设置，不代填后台，不上传或提交审核。

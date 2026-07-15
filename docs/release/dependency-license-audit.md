@@ -22,6 +22,7 @@ WXT 解析并打包 `webextension-polyfill` 0.12.0（MPL-2.0）。构建产物�
 - 无 source map、测试、fixture、日志、开发配置、Chrome for Testing、Puppeteer 或 profile。
 - `webextension-polyfill` 是唯一明确识别出的第三方运行时库；WXT 还生成少量包内启动代码。
 - 所有外部 URL 字符串都来自用户当前页面的结果链接或包内 license/文档；代码中没有固定远程 API、analytics、字体、图片、CDN 或配置端点。
+- Puppeteer 25.3.0 只为包级 smoke 临时安装在 Windows TEMP，并在验证后删除；它及其 bundled Chrome for Testing、cache、Profile 均不写入 `package.json`/lockfile，也不进入发布 ZIP。
 
 ## 素材与 fixture 来源
 

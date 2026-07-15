@@ -35,4 +35,6 @@ v0.4-C 百度动态页面回归可单独运行 `npm run test:v0.4-c`；发布前
 
 ## Chrome Web Store 发布准备
 
-发布准备材料位于 `docs/release/`，原创商店素材位于 `assets/release/`，扩展图标位于 `public/icons/`。当前发布前仍需开发者提供并核验公开支持邮箱、开发者名称和隐私政策公网 URL；这些用户输入完成前不提升版本号，也不生成最终商店 ZIP。
+发布准备材料位于 `docs/release/`，原创商店素材位于 `assets/release/`，扩展图标位于 `public/icons/`。公开开发者名称为 SearchLens，支持邮箱为 `826124445@qq.com`。隐私政策目标地址为 <https://han950214.github.io/project_002_SearchLens/privacy/>；该地址仅在仓库推送并由用户启用 GitHub Pages（`main` → `/docs`）且完成公开访问核验后才可视为已上线。
+
+包级发布 smoke 使用临时安装的 Puppeteer 25.3.0 与其 bundled Chrome for Testing，并强制 TEMP 隔离 Profile、`pipe: true` 和 `enableExtensions`。仓库不引入 Puppeteer 依赖，也不使用用户稳定版 Chrome 或用户 Profile。运行入口为 `npm run release:package-smoke`，具体临时环境要求见发布检查清单。

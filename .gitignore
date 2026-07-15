@@ -11,3 +11,5 @@ Thumbs.db
 .chrome-test-profile/
 .chrome-test-profile2/
 .chrome-test-profile*/
+release/*.zip
+release/*.sha256

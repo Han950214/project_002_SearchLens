@@ -52,4 +52,8 @@ English: Locally analyzes public results on Baidu web search pages to provide as
 
 ## 隐私政策与后台操作
 
-发布者必须先把仓库 `PRIVACY.md` 发布到稳定、公开、可直接访问的 HTTPS 页面，再把该 URL 填入 Privacy policy 字段。公开政策还必须补充真实支持邮箱和开发者身份。随后逐项填写并复核 single purpose、permission justifications、remote code、data usage 和 Limited Use certification。Codex 不登录或代填后台。
+开发者名称：SearchLens。支持邮箱：`826124445@qq.com`。
+
+隐私政策目标 URL：`https://han950214.github.io/project_002_SearchLens/privacy/`。仓库已准备 `docs/privacy/index.md`，但只有用户 push、在 GitHub Pages 选择 Deploy from branch → `main` → `/docs`，并在未登录窗口确认目标 URL 可直接访问后，才可把它作为已上线 URL 填入 Privacy policy 字段。
+
+随后由用户逐项填写并复核 single purpose、permission justifications、remote code、data usage 和 Limited Use certification。Codex 不登录、不代填、不上传、不提交。

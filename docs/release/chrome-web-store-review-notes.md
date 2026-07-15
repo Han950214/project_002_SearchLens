@@ -36,7 +36,7 @@ SearchLens CN 在百度网页搜索结果页本地分析当前公开结果，显
 - 搜索词、结果标题/链接/域名/摘要/顺序和页面标记只在本地即时处理。
 - 不上传搜索词、浏览记录或点击记录；不共享或出售数据；无 analytics、广告、remote code 或远程配置。
 
-Privacy practices 的逐项填写稿见 `chrome-web-store-privacy-disclosure.md`。公开隐私政策 URL 与支持邮箱必须由开发者在后台填写，Codex 不登录或代填。
+Privacy practices 的逐项填写稿见 `chrome-web-store-privacy-disclosure.md`。开发者名称为 SearchLens，支持邮箱为 `826124445@qq.com`；隐私政策目标 URL 为 `https://han950214.github.io/project_002_SearchLens/privacy/`，必须在用户启用 GitHub Pages 并公开核验后再填入后台。Codex 不登录或代填。
 
 ## 数据披露建议
 
