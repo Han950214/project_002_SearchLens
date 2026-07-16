@@ -1,15 +1,25 @@
 # Microsoft Edge Add-ons 测试证据
 
-测试日期：2026-07-15（Asia/Shanghai）
+测试日期：2026-07-15；zh_CN 定点修复复核日期：2026-07-16（Asia/Shanghai）
 
 ## 测试范围
 
 - Microsoft Edge：正式版 `150.0.4078.65`。
 - executable path：`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`。
 - Profile：每次测试使用新的 Windows TEMP 隔离 Profile；未访问用户现有 Edge 或 Chrome Profile。
-- 候选包来源：`main @ ae79f837b86d5d994f58a6085157926170b6e95c` 执行 `npm.cmd run build` 产生的 `.output/chrome-mv3`，以独立 Microsoft Edge Add-ons ZIP 保存，并从 TEMP 解压目录侧载。
+- 0.1.0 真实页面 smoke 候选包来源：`main @ ae79f837b86d5d994f58a6085157926170b6e95c` 执行 `npm.cmd run build` 产生的 `.output/chrome-mv3`，以独立 Microsoft Edge Add-ons ZIP 保存，并从 TEMP 解压目录侧载。
 - 加载方式：Puppeteer `pipe: true`、`enableExtensions`，未开放 TCP CDP。
 - extension ID：`elhmgnkggfcdlcjkajlkennfgjiljlpl`。
+
+## 0.1.1 zh_CN 本地化加载证据
+
+- 0.1.0 是已上传但未发布的 Partner Center 草稿包；0.1.1 是待用户替换上传的新包。
+- 0.1.1 manifest：version 为 `0.1.1`，`default_locale=zh_CN`，name 为 `__MSG_extensionName__`，description 为 `__MSG_extensionDescription__`。
+- locale 文件：`_locales/zh_CN/messages.json`；解析结果为 `SearchLens CN` 与 `在百度网页搜索结果页本地提供可信度参考、推荐排序与偏好控制。`。
+- 正式版 Microsoft Edge 使用新的 Windows TEMP Profile，从最终 0.1.1 ZIP 的 TEMP 解压目录加载；未访问用户现有 Profile。
+- 加载结果：扩展名显示 `SearchLens CN`，单一扩展实例、service worker 正常、load errors 为 0、service worker errors 为 0。
+- 本轮没有访问百度，没有触发或操作验证码，也没有改写下方既有真实页面证据。
+- 包：`release/searchlens-cn-0.1.1-microsoft-edge-addons.zip`；17 个文件；SHA-256：`38f621fe4fb8028206d104c892bf40528bc6031a7017e3a6e797b0bd8143aa9d`；禁止文件为 0。
 
 ## 已完成的 Edge 实机证据
 

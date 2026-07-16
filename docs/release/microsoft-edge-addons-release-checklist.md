@@ -1,11 +1,12 @@
 # Microsoft Edge Add-ons 发布检查清单
 
-更新日期：2026-07-15
+更新日期：2026-07-16
 
 ## 本地发布准备
 
 - [x] Microsoft 官方发布、移植、侧载、政策、策展、提交状态、MV3 和 API 支持页面已核对。
-- [x] Manifest V3 可解析；版本 `0.1.0`；名称和简短说明准确。
+- [x] Manifest V3 可解析；版本 `0.1.1`；`default_locale=zh_CN`；名称和简短说明通过 `__MSG_...__` 从 `zh_CN` locale 准确解析。
+- [x] 包含 `_locales/zh_CN/messages.json`；Partner Center 可据此识别简体中文。
 - [x] `update_url`、`key`、额外 `host_permissions`、`optional_permissions`、`web_accessible_resources` 均无。
 - [x] API 兼容 Microsoft Edge MV3 Windows；无需 Edge 运行时分叉。
 - [x] permissions 仅 `storage`；content script 仅匹配 `https://baidu.com/s*` 与 `https://www.baidu.com/s*`。
@@ -24,9 +25,10 @@
 - [x] Edge 最小真实页面 smoke 通过：`微信官网` 为单面板、query 正确、5 条推荐，SearchLens console errors 与 service worker errors 均为 0。
 - [x] 跨浏览器等价证据通过：Chrome for Testing 150 已对同一运行时代码完成四批真实百度 smoke，Edge 无运行时分叉。
 - [x] 自动化回归、lint、build、Edge API 与 manifest 静态兼容检查通过。
-- [x] Edge ZIP 根目录、16 个文件、禁止文件、manifest 引用和与 Chrome 包的内容等价性检查通过。
-- [x] Edge ZIP 与 SHA-256 文件已生成并复核；Chrome ZIP SHA-256 保持预期值。
-- [x] `git diff --check`、范围检查、暂存检查、本地 commit 和独立只读复核通过。
+- [x] Edge 0.1.1 ZIP 根目录、17 个文件、locale 文件、禁止文件和 manifest 引用检查通过。
+- [x] Edge 0.1.1 ZIP 与 SHA-256 文件已生成并复核：`38f621fe4fb8028206d104c892bf40528bc6031a7017e3a6e797b0bd8143aa9d`；既有 Chrome 0.1.0 ZIP 未改变。
+- [x] 正式版 Edge 使用新的 TEMP Profile 加载 0.1.1 候选包；名称显示为 `SearchLens CN`，单实例、service worker 正常、load errors 为 0，且未访问百度。
+- [x] 0.1.0 readiness 的 `git diff --check`、范围检查、暂存检查、本地 commit 和独立只读复核已通过。
 
 ## 已记录的外部限制
 
@@ -39,7 +41,7 @@
 
 ## USER ACTION REQUIRED：Partner Center
 
-- [ ] 用户在 Partner Center 上传 `release/searchlens-cn-0.1.0-microsoft-edge-addons.zip`。
+- [ ] 用户使用 `release/searchlens-cn-0.1.1-microsoft-edge-addons.zip` 替换 Partner Center 中已上传但未发布的 0.1.0 草稿包。
 - [ ] 用户选择 Visibility；建议 Public。
 - [ ] 用户选择 Markets；比较“默认所有市场”与“仅选择目标市场”后决定。
 - [ ] 用户选择 Category；建议当前最接近 Productivity / 浏览辅助 / 搜索工具的选项。

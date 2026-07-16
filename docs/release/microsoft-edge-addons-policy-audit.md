@@ -1,6 +1,6 @@
 # Microsoft Edge Add-ons 官方政策与兼容性审计
 
-核对日期：2026-07-15（Asia/Shanghai）
+核对日期：2026-07-16（Asia/Shanghai）
 
 范围：仅使用 Microsoft 官方一手资料；实现结论以当前仓库源码、正式构建和真实 Microsoft Edge 隔离测试为证据。
 
@@ -13,7 +13,7 @@
 | Sideload an extension to install and test it locally | https://learn.microsoft.com/en-us/microsoft-edge/extensions/getting-started/extension-sideloading | Developer mode 下从含 `manifest.json` 的目录加载 unpacked 扩展并测试 | 是 | 候选 ZIP 解压根目录直接含 manifest；正式版 Edge 以隔离 TEMP Profile 加载同一目录 | 无 |
 | Developer policies for the Microsoft Edge Add-ons store | https://learn.microsoft.com/en-us/legal/microsoft-edge/extensions/developer-policies | 单一狭窄用途；元数据准确；功能稳定可测试；最小权限；不误导、不冒充；准确披露页面与浏览活动；隐私政策保持最新 | 是 | 当前单一用途、仅 `storage`、两条百度 `/s*` matches、无敏感权限；隐私与认证稿；自动化和实机验证 | 无；共享隐私政策中的 `chrome.storage.local` 是 Chromium 扩展 API 名称，Edge 填写稿使用 Microsoft Edge 表述 |
 | Curation and review process for extensions at Microsoft Edge Add-ons | https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/add-ons-curation | Listing 的描述、截图、发布者和隐私链接应准确；质量、相关性和体验影响展示与审核 | 是 | 固定文案、原创素材、发布者与隐私字段均已准备 | 无 |
-| Submission states for extensions at Microsoft Edge Add-ons | https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/submission-states | Draft、In review、Waiting to publish、In the store、Review failed 等状态不得混淆 | 是 | 发布清单保留上传、Publish、审核反馈为用户操作 | 无；当前尚未上传，不能声称已进入审核 |
+| Submission states for extensions at Microsoft Edge Add-ons | https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/submission-states | Draft、In review、Waiting to publish、In the store、Review failed 等状态不得混淆 | 是 | 发布清单保留上传、Publish、审核反馈为用户操作 | 无；0.1.0 已上传但未发布，仍是草稿；0.1.1 尚未上传，不能声称已进入审核 |
 | Overview and timelines for migrating to Manifest V3 | https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/manifest-v3 | 新扩展使用 MV3；后台采用 service worker；所有可执行逻辑在包内；禁止远程代码 | 是 | `manifest_version=3`、`background.service_worker`、无远程脚本或动态远程 import | 无 |
 | Supported APIs for Microsoft Edge extensions | https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/api-support | 核对实际使用的扩展 API 在 Edge MV3/Windows 上受支持 | 是 | 实际使用 `runtime`、`storage`、`tabs.create`；均在官方列表中支持 MV3 Windows | 无 |
 
@@ -25,19 +25,19 @@ Microsoft 当前发布文档与旧流程的主要变化是：Privacy 已从 Prop
 - API：`chrome.storage.local`、`browser.runtime` 和 `browser.tabs.create` 均由 Microsoft Edge MV3 支持；`tabs.create` 只打开扩展自身 options，不读取标签信息，因此不申请 `tabs` 权限。
 - `update_url`：缺失，符合从 Chrome 移植到 Edge 的官方要求。
 - `key`：缺失；不固化开发机扩展 ID。
-- `default_locale`：缺失；当前 manifest 直接使用固定中文名称和说明，包内无 `_locales`，因此不应添加无对应 locale 资源的字段。Partner Center 由用户建立 zh-CN Listing。
+- `default_locale`：`zh_CN`；包内包含 `_locales/zh_CN/messages.json`，使 Partner Center 可从扩展 manifest 识别简体中文。
 - CSP：未声明自定义 CSP，使用 MV3 默认扩展 CSP；无远程脚本、`eval` 或 `new Function`。
 - permissions：仅 `storage`。
 - host permissions：无。
 - content script matches：`https://baidu.com/s*`、`https://www.baidu.com/s*`。
 - `web_accessible_resources`、`optional_permissions`、`externally_connectable`：均无。
-- name：`SearchLens CN`；description：`在百度网页搜索结果页本地提供可信度参考、推荐排序与偏好控制。`；均无 Chrome 专用、第三方官方、AI、云端或安全认证表述。
+- name：`__MSG_extensionName__`；description：`__MSG_extensionDescription__`；在 `zh_CN` locale 中分别解析为 `SearchLens CN` 与 `在百度网页搜索结果页本地提供可信度参考、推荐排序与偏好控制。`，均无 Chrome 专用、第三方官方、AI、云端或安全认证表述。
 - 网络：扩展源码没有 `fetch`、`XMLHttpRequest`、`WebSocket`、`sendBeacon`、analytics、telemetry、crash reporting、远程配置、外部字体、外部图片或 CDN。构建 chunk 的 modulepreload helper 只可能读取包内同源模块，不是外部 endpoint。
 - 结论：无需 Edge adapter、Edge scoring、Edge recommendation、Edge runtime registry 或第二套 manifest 生成框架；Chrome 与 Edge 共享同一套运行时代码、评分、实体/意图规则、推荐、storage、百度 adapter、UI 和 runtime 生命周期。
 
 ## 依赖与许可证
 
-Edge 候选包与 Chrome Web Store 包的分发文件集合一致，没有 Edge 专用依赖。复用 `dependency-license-audit.md`：WXT 0.19.29 为 MIT；实际分发的 `webextension-polyfill` 0.12.0 为 MPL-2.0；包内保留 `THIRD_PARTY_NOTICES.txt`。未发现未知许可证、禁止商业分发的依赖或未经授权品牌素材。
+Edge 0.1.1 候选包相对既有 Chrome Web Store 0.1.0 包仅增加 `zh_CN` locale 并更新 manifest 元数据与版本，没有 Edge 专用运行时代码或新增依赖。复用 `dependency-license-audit.md`：WXT 0.19.29 为 MIT；实际分发的 `webextension-polyfill` 0.12.0 为 MPL-2.0；包内保留 `THIRD_PARTY_NOTICES.txt`。未发现未知许可证、禁止商业分发的依赖或未经授权品牌素材。
 
 ## 真实 Edge 证据
 
@@ -50,6 +50,14 @@ Edge 候选包与 Chrome Web Store 包的分发文件集合一致，没有 Edge 
 - 原生加载：候选扩展成功加载，extension ID 为 `elhmgnkggfcdlcjkajlkennfgjiljlpl`，单实例，service worker 正常，load errors 为 0；MV3、`runtime`、`storage` 与 `tabs.create` API 在 Edge 中正常。
 - 最小真实页面 smoke：`微信官网` 查询得到一个面板、query 为 `微信官网`、5 条推荐；SearchLens console errors 与 service worker errors 均为 0。
 - 后续查询被百度安全验证码阻塞；首次尝试与唯一一次新的 TEMP Profile 重试均出现验证码。未绕过、破解或识别验证码，也未继续制造请求。该外部阻塞不是 SearchLens 产品错误。
+
+## 0.1.1 zh_CN 定点修复证据
+
+- 0.1.0 是已上传但未发布的 Partner Center 草稿包；0.1.1 是待用户替换上传的新包。
+- 0.1.1 manifest 使用 `default_locale=zh_CN`、`__MSG_extensionName__` 和 `__MSG_extensionDescription__`，并包含 `_locales/zh_CN/messages.json`。
+- 正式版 Edge 使用新的 Windows TEMP Profile 从 0.1.1 ZIP 的 TEMP 解压目录加载成功；扩展名解析为 `SearchLens CN`，单一扩展实例、service worker 正常、load errors 为 0、service worker errors 为 0。
+- 本次加载检查未访问百度，不改变既有真实页面 smoke 与外部验证码证据。
+- 新包：`release/searchlens-cn-0.1.1-microsoft-edge-addons.zip`；SHA-256：`38f621fe4fb8028206d104c892bf40528bc6031a7017e3a6e797b0bd8143aa9d`。
 
 ## 跨浏览器补充证据与发布判断
 

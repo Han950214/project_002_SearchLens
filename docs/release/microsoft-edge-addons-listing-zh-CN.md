@@ -4,13 +4,18 @@
 
 SearchLens CN
 
-名称来自构建 manifest；如需更改必须重新构建并上传 ZIP。本轮保持不变。
+名称由构建 manifest 的 `__MSG_extensionName__` 引用 `zh_CN` locale，解析结果为 `SearchLens CN`。Partner Center 上传 0.1.1 包后应通过 `_locales/zh_CN/messages.json` 识别简体中文。
 
 ## Short description
 
 在百度网页搜索结果页本地提供可信度参考、推荐排序与偏好控制。
 
-简短说明来自构建 manifest；不包含 Chrome 专用、第三方官方、AI、云端评分或安全认证表述。
+简短说明由构建 manifest 的 `__MSG_extensionDescription__` 引用 `zh_CN` locale；不包含 Chrome 专用、第三方官方、AI、云端评分或安全认证表述。
+
+## 当前上传包
+
+- `0.1.0`：已上传但未发布的 Partner Center 草稿包，仅被识别为英语（美国）。
+- `0.1.1`：待用户替换上传的新包；文件为 `release/searchlens-cn-0.1.1-microsoft-edge-addons.zip`，SHA-256 为 `38f621fe4fb8028206d104c892bf40528bc6031a7017e3a6e797b0bd8143aa9d`。
 
 ## Description
 

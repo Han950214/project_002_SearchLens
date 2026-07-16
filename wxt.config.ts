@@ -2,8 +2,9 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   manifest: {
-    name: 'SearchLens CN',
-    description: '在百度网页搜索结果页本地提供可信度参考、推荐排序与偏好控制。',
+    default_locale: 'zh_CN',
+    name: '__MSG_extensionName__',
+    description: '__MSG_extensionDescription__',
     permissions: ['storage'],
     icons: {
       16: 'icons/searchlens-16.png',
